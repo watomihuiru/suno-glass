@@ -5,235 +5,241 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Music Studio</title>
     <link rel="stylesheet" href="style.css">
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
-    <!-- Фоновый градиент -->
     <div class="bg-gradient"></div>
 
     <div class="main-container">
-        
-        <!-- ЛЕВАЯ КОЛОНКА (Меню) -->
+        <!-- SIDEBAR -->
         <nav class="glass-panel sidebar">
-            <div class="logo">
-                <i class="fa-solid fa-wave-square"></i> Suno AI
-            </div>
+            <div class="logo"><i class="fa-solid fa-wave-square"></i> Suno AI</div>
             <ul class="menu">
-                <li class="active" data-tab="generate">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate
-                </li>
-                <li data-tab="extend">
-                    <i class="fa-solid fa-arrows-left-right-to-line"></i> Extend
-                </li>
-                <li data-tab="cover">
-                    <i class="fa-solid fa-microphone-lines"></i> Cover
-                </li>
-                <!-- Вкладка для логов -->
-                <li data-tab="logs" class="logs-tab">
-                    <i class="fa-solid fa-terminal"></i> API Logs
-                </li>
+                <li class="active" data-tab="generate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</li>
+                <li data-tab="extend"><i class="fa-solid fa-arrows-left-right-to-line"></i> Extend</li>
+                <li data-tab="cover"><i class="fa-solid fa-microphone-lines"></i> Cover</li>
+                <li data-tab="logs" class="logs-tab"><i class="fa-solid fa-terminal"></i> API Logs</li>
             </ul>
         </nav>
 
-        <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА (Контент) -->
+        <!-- CONTENT -->
         <main class="content-area">
             
-            <!-- СЕКЦИЯ: GENERATE -->
+            <!-- GENERATE TAB -->
             <section id="generate" class="tab-content active">
                 <div class="glass-panel content-card">
                     <h2>Create New Track</h2>
                     <p class="subtitle">Describe the song you want to hear</p>
-                    
                     <form id="generateForm">
-                        
-                        <!-- Выбор версии модели -->
                         <div class="form-group">
                             <label style="margin-bottom: 12px; display:block;">Model Version</label>
                             <div class="model-selector">
                                 <input type="radio" name="model" id="m_v3_5" value="V3_5">
                                 <label for="m_v3_5">v3.5</label>
-
                                 <input type="radio" name="model" id="m_v4" value="V4">
                                 <label for="m_v4">v4</label>
-
                                 <input type="radio" name="model" id="m_v4_5" value="V4_5">
                                 <label for="m_v4_5">v4.5</label>
-
                                 <input type="radio" name="model" id="m_v4_5_plus" value="V4_5_PLUS">
                                 <label for="m_v4_5_plus">v4.5+</label>
-
                                 <input type="radio" name="model" id="m_v5" value="V5" checked>
                                 <label for="m_v5">v5</label>
-
-                                <!-- Анимация ползунка -->
                                 <div class="glider"></div>
                             </div>
                         </div>
-
-                        <!-- Настройки (Instrumental / Custom Mode) -->
                         <div class="settings-grid">
-                            <div class="toggle-group">
-                                <label>Instrumental</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="instrumental">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-
-                            <div class="toggle-group">
-                                <label>Custom Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="customMode">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
+                            <div class="toggle-group"><label>Instrumental</label><label class="switch"><input type="checkbox" id="instrumental"><span class="slider round"></span></label></div>
+                            <div class="toggle-group"><label>Custom Mode</label><label class="switch"><input type="checkbox" id="customMode"><span class="slider round"></span></label></div>
                         </div>
-
-                        <!-- Поля Custom Mode (Название, Стиль) -->
                         <div id="customFields" class="hidden">
                             <div class="form-group">
-                                <label>Title</label>
-                                <input type="text" id="title" placeholder="Song Title">
+                                <div class="label-row"><label>Title</label><span id="titleCounter" class="char-counter">0 / 80</span></div>
+                                <input type="text" id="title" placeholder="Song Title" maxlength="80">
                             </div>
                             <div class="form-group">
-                                <label>Style (Genre)</label>
+                                <div class="label-row"><label>Style (Genre)</label><span id="styleCounter" class="char-counter">0 / 200</span></div>
                                 <input type="text" id="style" placeholder="Pop, Rock, Electronic...">
                             </div>
                         </div>
-
-                        <!-- Основное поле ввода (Prompt / Lyrics) -->
                         <div class="form-group" id="promptContainer">
-                            <label id="promptLabel">Song Description</label>
+                            <div class="label-row"><label id="promptLabel">Song Description</label><span id="promptCounter" class="char-counter">0 / 3000</span></div>
                             <textarea id="prompt" placeholder="A futuristic synthwave track with deep bass and neon vibes..." required></textarea>
                         </div>
-
-                        <button type="submit" class="generate-btn">
-                            <i class="fa-solid fa-bolt"></i> Generate Music
-                        </button>
+                        <button type="submit" class="generate-btn"><i class="fa-solid fa-bolt"></i> Generate Music</button>
                     </form>
-
-                    <!-- Сообщение о статусе -->
-                    <div id="statusMessage" class="status-box hidden">
-                        <i class="fa-solid fa-circle-notch fa-spin"></i> Generating...
-                    </div>
+                    <div id="statusMessage" class="status-box hidden"><i class="fa-solid fa-circle-notch fa-spin"></i> Generating...</div>
                 </div>
             </section>
 
-            <!-- СЕКЦИЯ: EXTEND (Заглушка) -->
+            <!-- EXTEND TAB -->
             <section id="extend" class="tab-content">
                 <div class="glass-panel content-card">
                     <h2>Extend Track</h2>
                     <p class="subtitle">Seamlessly continue an existing song</p>
-                    <div class="skeleton-ui">
-                        <button class="generate-btn disabled">Feature Coming Soon</button>
-                    </div>
+                    <div class="skeleton-ui"><button class="generate-btn disabled">Feature Coming Soon</button></div>
                 </div>
             </section>
 
-            <!-- СЕКЦИЯ: COVER (Заглушка) -->
+            <!-- COVER TAB (NEW) -->
             <section id="cover" class="tab-content">
                 <div class="glass-panel content-card">
                     <h2>Remix / Cover</h2>
-                    <p class="subtitle">Change the style of an audio file</p>
-                    <div class="upload-area">
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <p>Drop audio file here</p>
-                    </div>
+                    <p class="subtitle">Change the style of an audio file while keeping melody</p>
+                    
+                    <form id="coverForm">
+                        
+                        <!-- Upload Zone -->
+                        <div class="form-group">
+                            <label>Upload Audio (Max 2 min)</label>
+                            <div class="upload-zone" id="uploadZone">
+                                <input type="file" id="coverFileInput" accept="audio/*" hidden>
+                                <div class="upload-content" id="uploadContent">
+                                    <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                                    <p>Click to upload or drag and drop</p>
+                                    <span class="upload-hint">MP3, WAV (Max 10MB)</span>
+                                </div>
+                                <div class="file-preview hidden" id="filePreview">
+                                    <i class="fa-solid fa-music file-icon"></i>
+                                    <div class="file-info">
+                                        <span class="file-name">song.mp3</span>
+                                        <span class="file-size">3.2 MB</span>
+                                    </div>
+                                    <button type="button" class="remove-file-btn" id="removeFileBtn"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Model Selector (Reusable UI, distinct ID) -->
+                        <div class="form-group">
+                            <label>Model Version</label>
+                            <select id="coverModel" class="glass-select">
+                                <option value="V5">v5 (Recommended)</option>
+                                <option value="V4_5">v4.5</option>
+                                <option value="V4_5PLUS">v4.5+</option>
+                                <option value="V4">v4</option>
+                                <option value="V3_5">v3.5</option>
+                            </select>
+                        </div>
+
+                        <!-- Toggles -->
+                        <div class="settings-grid">
+                            <div class="toggle-group">
+                                <label>Instrumental</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="coverInstrumental">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-group">
+                                <label>Custom Mode</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="coverCustomMode">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Custom Fields -->
+                        <div id="coverCustomFields" class="hidden">
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" id="coverTitle" placeholder="New Song Title">
+                            </div>
+                            <div class="form-group">
+                                <label>Style (Required)</label>
+                                <input type="text" id="coverStyle" placeholder="Jazz, Classical, Reggae...">
+                            </div>
+                            <div class="form-group">
+                                <label>Vocal Gender</label>
+                                <select id="coverVocalGender" class="glass-select">
+                                    <option value="">Random / Default</option>
+                                    <option value="m">Male</option>
+                                    <option value="f">Female</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Prompt (Lyrics) -->
+                        <div class="form-group" id="coverPromptContainer">
+                            <label id="coverPromptLabel">Song Description</label>
+                            <textarea id="coverPrompt" placeholder="Describe the vibe or paste lyrics..."></textarea>
+                        </div>
+
+                        <!-- Advanced Sliders -->
+                        <div class="advanced-settings">
+                            <div class="slider-control">
+                                <div class="label-row"><label>Style Weight</label><span id="valStyle">0.65</span></div>
+                                <input type="range" id="styleWeight" min="0" max="1" step="0.01" value="0.65">
+                            </div>
+                            <div class="slider-control">
+                                <div class="label-row"><label>Audio Weight</label><span id="valAudio">0.65</span></div>
+                                <input type="range" id="audioWeight" min="0" max="1" step="0.01" value="0.65">
+                            </div>
+                            <div class="slider-control">
+                                <div class="label-row"><label>Weirdness</label><span id="valWeird">0.65</span></div>
+                                <input type="range" id="weirdness" min="0" max="1" step="0.01" value="0.65">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="generate-btn">
+                            <i class="fa-solid fa-record-vinyl"></i> Create Cover
+                        </button>
+                    </form>
+                    
+                    <div id="coverStatusMessage" class="status-box hidden"></div>
                 </div>
             </section>
 
-            <!-- СЕКЦИЯ: API LOGS -->
+            <!-- LOGS TAB -->
             <section id="logs" class="tab-content">
                 <div class="glass-panel content-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h2>API Responses</h2>
                         <button class="clear-logs-btn" id="clearLogsBtn">Clear Logs</button>
                     </div>
-                    <!-- Контейнер для JSON логов -->
-                    <div class="logs-container" id="jsonOutput">
-                        <div class="log-entry info">Waiting for requests...</div>
-                    </div>
+                    <div class="logs-container" id="jsonOutput"><div class="log-entry info">Waiting for requests...</div></div>
                 </div>
             </section>
 
         </main>
 
-        <!-- ПРАВАЯ КОЛОНКА (Библиотека) -->
         <aside class="glass-panel library-panel">
-            <div class="library-header">
-                <h3><i class="fa-solid fa-music"></i> Library</h3>
-            </div>
-            <div class="library-list" id="libraryGrid">
-                <div class="empty-state">No music generated yet.</div>
-            </div>
+            <div class="library-header"><h3><i class="fa-solid fa-music"></i> Library</h3></div>
+            <div class="library-list" id="libraryGrid"><div class="empty-state">No music generated yet.</div></div>
         </aside>
-
     </div>
 
-    <!-- НИЖНИЙ ПЛЕЕР -->
     <div class="glass-panel player-bar">
-        <!-- Инфо о треке -->
         <div class="track-info">
             <img src="https://placehold.co/60" alt="" id="playerCover" class="player-cover">
-            <div class="track-text">
-                <h4 id="playerTitle">Select a track</h4>
-                <div class="scrolling-text-container">
-                    <p id="playerArtist">Suno AI</p>
-                </div>
-            </div>
+            <div class="track-text"><h4 id="playerTitle">Select a track</h4><div class="scrolling-text-container"><p id="playerArtist">Suno AI</p></div></div>
         </div>
-        
-        <!-- Кнопки управления -->
         <div class="player-center-group">
             <div class="player-controls">
+                <button class="control-btn" id="shuffleBtn"><i class="fa-solid fa-shuffle"></i></button>
                 <button class="control-btn" id="prevBtn"><i class="fa-solid fa-backward-step"></i></button>
                 <button class="control-btn play-main" id="playPauseBtn"><i class="fa-solid fa-play"></i></button>
                 <button class="control-btn" id="nextBtn"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="control-btn" id="loopBtn"><i class="fa-solid fa-repeat"></i></button>
             </div>
-            
-            <!-- Прогресс бар -->
-            <div class="player-progress-container">
-                <span id="currentTime" class="time-text">0:00</span>
-                <input type="range" id="progressBar" value="0" min="0" max="100">
-                <span id="duration" class="time-text">0:00</span>
-            </div>
+            <div class="player-progress-container"><span id="currentTime" class="time-text">0:00</span><input type="range" id="progressBar" value="0" min="0" max="100"><span id="duration" class="time-text">0:00</span></div>
         </div>
-
-        <!-- Отступ справа для баланса -->
         <div class="player-right-spacer" style="width: 250px;"></div>
-        
-        <!-- Скрытый аудио элемент -->
         <audio id="audioElement"></audio>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО (Текст песни) -->
     <div id="lyricsModal" class="modal hidden">
         <div class="glass-panel modal-content">
             <button class="close-modal-btn" id="closeModalBtn"><i class="fa-solid fa-xmark"></i></button>
-            
             <div class="modal-body">
-                <div class="modal-cover-container">
-                    <img src="" id="modalCover" alt="Cover">
-                    <div class="modal-track-details">
-                        <h2 id="modalTitle">Track Title</h2>
-                        <p id="modalTags">Tags</p>
-                    </div>
-                </div>
-                
-                <div class="lyrics-container">
-                    <h3>Lyrics</h3>
-                    <p id="modalLyrics">No lyrics available.</p>
-                </div>
+                <div class="modal-cover-container"><img src="" id="modalCover" alt="Cover"><div class="modal-track-details"><h2 id="modalTitle">Track Title</h2><p id="modalTags">Tags</p></div></div>
+                <div class="lyrics-container"><h3>Lyrics</h3><p id="modalLyrics">No lyrics available.</p></div>
             </div>
         </div>
     </div>
 
-    <!-- Подключаем клиентскую библиотеку Socket.IO (автоматически отдается сервером) -->
     <script src="/socket.io/socket.io.js"></script>
-    
-    <!-- Наш основной скрипт -->
     <script src="script.js"></script>
 </body>
 </html>

@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdvancedToggle('genAdvancedToggle', 'genAdvancedContent');
     setupAdvancedToggle('coverAdvancedToggle', 'coverAdvancedContent');
 
-    // --- INPUT COUNTERS ---
+    // --- INPUT COUNTERS & LIMITS ---
     const genPrompt = document.getElementById('prompt');
     const genStyle = document.getElementById('style');
     const genTitle = document.getElementById('title');
@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         counterElement.innerText = `${input.value.length} / ${input.maxLength}`;
     }
 
+    // Bind listeners
     if(genPrompt) genPrompt.addEventListener('input', () => updateCounter(genPrompt, genPromptCnt));
     if(genStyle) genStyle.addEventListener('input', () => updateCounter(genStyle, genStyleCnt));
     if(genTitle) genTitle.addEventListener('input', () => updateCounter(genTitle, genTitleCnt));
@@ -95,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function updateInputLimits() {
+        // Generate Tab
         const genModelBtn = document.querySelector('input[name="model"]:checked');
         if (genModelBtn) {
             const limits = MODEL_LIMITS[genModelBtn.value] || MODEL_LIMITS['V3_5'];
@@ -103,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (genTitle) { genTitle.maxLength = 80; updateCounter(genTitle, genTitleCnt); }
         }
 
+        // Cover Tab
         const covModelBtn = document.querySelector('input[name="coverModel"]:checked');
         if (covModelBtn) {
             const limits = MODEL_LIMITS[covModelBtn.value] || MODEL_LIMITS['V3_5'];
@@ -169,11 +172,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const isInst = instrumentalToggle.checked;
         if (isCustom) {
             customFields.classList.remove('hidden');
-            if (isInst) { promptContainer.classList.add('hidden'); if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); } 
-            else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; genPrompt.placeholder = "[Verse 1]..."; if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); }
+            if (isInst) { 
+                promptContainer.classList.add('hidden'); 
+                if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); 
+            } 
+            else { 
+                promptContainer.classList.remove('hidden'); 
+                promptLabel.innerText = "Lyrics"; 
+                genPrompt.placeholder = "[Verse 1]..."; 
+                if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); 
+            }
         } else {
             customFields.classList.add('hidden');
-            promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; genPrompt.placeholder = "A futuristic synthwave track...";
+            promptContainer.classList.remove('hidden'); 
+            promptLabel.innerText = "Song Description"; 
+            genPrompt.placeholder = "A futuristic synthwave track...";
         }
     }
     if(customModeToggle) {
@@ -185,8 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GENERATE SUBMIT ---
     const generateForm = document.getElementById('generateForm');
-    // УДАЛЕНО: const statusBox = document.getElementById('statusMessage'); // Это вызывало ошибку
-
+    
     if(generateForm) {
         generateForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -197,8 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
             pendingTempTracks.push(...tempIds);
-
-            // УДАЛЕНО ОБРАЩЕНИЕ К statusBox
 
             const payload = {
                 prompt: promptVal,
@@ -215,7 +225,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(payload.customMode) {
                 payload.style = styleVal; 
                 payload.title = titleVal;
-                // Only send vocal gender if NOT instrumental
                 if(!payload.instrumental) {
                     payload.vocalGender = document.getElementById('vocalGender').value;
                 } else {
@@ -301,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCoverUI();
 
     const coverForm = document.getElementById('coverForm');
-    // УДАЛЕНО: const coverStatus = document.getElementById('coverStatusMessage');
 
     if(coverForm) {
         coverForm.addEventListener('submit', (e) => {
@@ -318,8 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
             pendingTempTracks.push(...tempIds);
-
-            // REMOVED: coverStatus logic
 
             let finalUploadUrl = "";
             if (hasUrl) {
@@ -357,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SOCKET LISTENERS ---
     socket.on('task_created', (data) => {
-        // NO UI UPDATE HERE, JUST LOGIC
         if (pendingTempTracks.length > 0) {
             library = library.map(track => {
                 if (pendingTempTracks.includes(track.id)) return { ...track, taskId: data.taskId };
@@ -424,8 +429,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function simulateProgress(trackId) {
         let progress = 0;
         if (progressTimers[trackId]) clearInterval(progressTimers[trackId]);
+        // Smooth fake progress for 120s
         progressTimers[trackId] = setInterval(() => {
-            progress += 0.5;
+            progress += 0.8; // Approx 125 sec to 100%
             const trackIndex = library.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
                 library[trackIndex].progress = progress;

@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    
     const socket = io();
+
     let library = []; 
     let currentTrackId = null; 
     let isPlaying = false;
@@ -10,20 +12,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INIT ---
     function loadLibrary() {
-        const stored = localStorage.getItem('suno_library');
-        if (stored) { library = JSON.parse(stored); renderLibrary(); }
+        try {
+            const stored = localStorage.getItem('suno_library');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    library = parsed;
+                    renderLibrary();
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load library", e);
+            // Не перезаписываем localStorage, чтобы не удалить данные при ошибке чтения
+        }
     }
-    function saveLibrary() { localStorage.setItem('suno_library', JSON.stringify(library)); }
+    function saveLibrary() {
+        localStorage.setItem('suno_library', JSON.stringify(library));
+    }
+
     function getDisplayModelName(rawName) {
         if (!rawName) return 'AI';
         const lower = rawName.toLowerCase();
         if (lower.includes('v5')) return 'v5';
-        if (lower.includes('v4_5_plus')) return 'v4.5+';
-        if (lower.includes('v4_5')) return 'v4.5';
+        if (lower.includes('v4_5_plus') || lower.includes('v4.5+')) return 'v4.5+';
+        if (lower.includes('v4_5') || lower.includes('v4.5')) return 'v4.5';
         if (lower.includes('v4')) return 'v4';
-        if (lower.includes('v3_5')) return 'v3.5';
+        if (lower.includes('v3_5') || lower.includes('v3.5')) return 'v3.5';
         return rawName;
     }
+
+    // --- Helper: Setup Advanced Toggles ---
+    function setupAdvancedToggle(toggleId, contentId) {
+        const toggle = document.getElementById(toggleId);
+        const content = document.getElementById(contentId);
+        
+        if (toggle && content) {
+            // Удаляем старые слушатели (клон ноды - хак для очистки)
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+            
+            newToggle.addEventListener('click', () => {
+                newToggle.classList.toggle('active');
+                content.classList.toggle('open');
+            });
+        } else {
+            console.warn(`Advanced toggle not found: ${toggleId}`);
+        }
+    }
+
+    // Вызываем настройку тогглов
+    setupAdvancedToggle('genAdvancedToggle', 'genAdvancedContent');
+    setupAdvancedToggle('coverAdvancedToggle', 'coverAdvancedContent');
+
+
+    // --- Input Counters ---
+    const promptInput = document.getElementById('prompt');
+    const styleInput = document.getElementById('style');
+    const titleInput = document.getElementById('title');
+    const promptCounter = document.getElementById('promptCounter');
+    const styleCounter = document.getElementById('styleCounter');
+    const titleCounter = document.getElementById('titleCounter');
+
+    function updateCounter(input, counterElement) {
+        if (!input || !counterElement) return;
+        counterElement.innerText = `${input.value.length} / ${input.maxLength}`;
+    }
+    if(promptInput) promptInput.addEventListener('input', () => updateCounter(promptInput, promptCounter));
+    if(styleInput) styleInput.addEventListener('input', () => updateCounter(styleInput, styleCounter));
+    if(titleInput) titleInput.addEventListener('input', () => updateCounter(titleInput, titleCounter));
+
+    const MODEL_LIMITS = {
+        'V3_5': { prompt: 3000, style: 200 },
+        'V4': { prompt: 3000, style: 200 },
+        'V4_5': { prompt: 5000, style: 1000 },
+        'V4_5_PLUS': { prompt: 5000, style: 1000 },
+        'V5': { prompt: 5000, style: 1000 }
+    };
+
+    function updateInputLimits() {
+        const selectedModelBtn = document.querySelector('input[name="model"]:checked');
+        if (!selectedModelBtn) return;
+        const limits = MODEL_LIMITS[selectedModelBtn.value] || MODEL_LIMITS['V3_5'];
+        if (promptInput) { promptInput.maxLength = limits.prompt; updateCounter(promptInput, promptCounter); }
+        if (styleInput) { styleInput.maxLength = limits.style; updateCounter(styleInput, styleCounter); }
+        if (titleInput) { titleInput.maxLength = 80; updateCounter(titleInput, titleCounter); }
+    }
+    document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', updateInputLimits));
+
+    // Slider Listeners
+    function bindSlider(id, labelId) {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input', (e) => document.getElementById(labelId).innerText = e.target.value);
+    }
+    bindSlider('styleWeight', 'valStyle');
+    bindSlider('audioWeight', 'valAudio');
+    bindSlider('weirdness', 'valWeird');
+    bindSlider('genStyleWeight', 'genValStyle');
+    bindSlider('genAudioWeight', 'genValAudio');
+    bindSlider('genWeirdness', 'genValWeird');
 
     // --- TABS ---
     document.querySelectorAll('.menu li').forEach(item => {
@@ -54,15 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
         jsonOutput.prepend(entry);
     });
 
-    // ==========================================
-    // GENERATE TAB LOGIC
-    // ==========================================
+    // --- GENERATE UI ---
     const customModeToggle = document.getElementById('customMode');
     const instrumentalToggle = document.getElementById('instrumental');
     const customFields = document.getElementById('customFields');
     const promptContainer = document.getElementById('promptContainer');
     const promptLabel = document.getElementById('promptLabel');
-    const promptInput = document.getElementById('prompt');
 
     function updateGenUI() {
         const isCustom = customModeToggle.checked;
@@ -80,8 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         customModeToggle.addEventListener('change', updateGenUI);
         instrumentalToggle.addEventListener('change', updateGenUI);
         updateGenUI();
+        updateInputLimits();
     }
 
+    // --- GENERATE SUBMIT ---
     const generateForm = document.getElementById('generateForm');
     const statusBox = document.getElementById('statusMessage');
 
@@ -104,70 +189,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 customMode: customModeToggle.checked,
                 instrumental: instrumentalToggle.checked,
                 model: modelVal,
-                callBackUrl: "https://example.com/callback" 
+                callBackUrl: "https://example.com/callback",
+                negativeTags: document.getElementById('negativeTags').value,
+                styleWeight: parseFloat(document.getElementById('genStyleWeight').value),
+                audioWeight: parseFloat(document.getElementById('genAudioWeight').value),
+                weirdnessConstraint: parseFloat(document.getElementById('genWeirdness').value)
             };
+            
             if(payload.customMode) {
-                payload.style = styleVal; payload.title = titleVal;
+                payload.style = styleVal; 
+                payload.title = titleVal;
+                payload.vocalGender = document.getElementById('vocalGender').value;
                 if(payload.instrumental) payload.prompt = ""; 
             }
             socket.emit('generate_music', payload);
         });
     }
 
-    // ==========================================
-    // COVER TAB LOGIC (NEW)
-    // ==========================================
+    // --- COVER UI ---
     const uploadZone = document.getElementById('uploadZone');
     const coverFileInput = document.getElementById('coverFileInput');
     const uploadContent = document.getElementById('uploadContent');
     const filePreview = document.getElementById('filePreview');
     const removeFileBtn = document.getElementById('removeFileBtn');
-    
     let coverFile = null;
 
-    // File Handling
     uploadZone.addEventListener('click', () => coverFileInput.click());
     uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
     uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-    uploadZone.addEventListener('drop', (e) => {
-        e.preventDefault(); uploadZone.classList.remove('dragover');
-        if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-    });
+    uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
     coverFileInput.addEventListener('change', () => { if(coverFileInput.files.length) handleFile(coverFileInput.files[0]); });
     removeFileBtn.addEventListener('click', (e) => { e.stopPropagation(); resetFile(); });
 
     function handleFile(file) {
-        if(file.size > 10 * 1024 * 1024) { alert('File too large (Max 10MB)'); return; }
-        if(!file.type.startsWith('audio/')) { alert('Audio files only'); return; }
-        
+        if(file.size > 10 * 1024 * 1024) { alert('File too large'); return; }
+        if(!file.type.startsWith('audio/')) { alert('Audio only'); return; }
         coverFile = file;
         uploadContent.classList.add('hidden');
         filePreview.classList.remove('hidden');
         filePreview.querySelector('.file-name').innerText = file.name;
         filePreview.querySelector('.file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
     }
+    function resetFile() { coverFile = null; coverFileInput.value = ''; uploadContent.classList.remove('hidden'); filePreview.classList.add('hidden'); }
 
-    function resetFile() {
-        coverFile = null;
-        coverFileInput.value = '';
-        uploadContent.classList.remove('hidden');
-        filePreview.classList.add('hidden');
-    }
-
-    // Sliders Update
-    ['styleWeight', 'audioWeight', 'weirdness'].forEach(id => {
-        document.getElementById(id).addEventListener('input', (e) => {
-            // id="valStyle" for "styleWeight"
-            const labelId = 'val' + id.replace('Weight', '').replace('ness', '').replace('weird', 'Weird');
-            const label = document.getElementById(labelId); 
-            // Simple mapping fix
-            if(id === 'styleWeight') document.getElementById('valStyle').innerText = e.target.value;
-            if(id === 'audioWeight') document.getElementById('valAudio').innerText = e.target.value;
-            if(id === 'weirdness') document.getElementById('valWeird').innerText = e.target.value;
-        });
-    });
-
-    // Cover UI Update
     const coverCustomMode = document.getElementById('coverCustomMode');
     const coverInstrumental = document.getElementById('coverInstrumental');
     const coverCustomFields = document.getElementById('coverCustomFields');
@@ -176,25 +240,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateCoverUI() {
         const isCustom = coverCustomMode.checked;
         const isInst = coverInstrumental.checked;
-        
         if(isCustom) {
             coverCustomFields.classList.remove('hidden');
             if(isInst) coverPromptContainer.classList.add('hidden');
-            else {
-                coverPromptContainer.classList.remove('hidden');
-                document.getElementById('coverPromptLabel').innerText = "Lyrics";
-            }
+            else { coverPromptContainer.classList.remove('hidden'); document.getElementById('coverPromptLabel').innerText = "Lyrics"; }
         } else {
             coverCustomFields.classList.add('hidden');
-            coverPromptContainer.classList.remove('hidden');
-            document.getElementById('coverPromptLabel').innerText = "Song Description";
+            coverPromptContainer.classList.remove('hidden'); document.getElementById('coverPromptLabel').innerText = "Song Description";
         }
     }
     coverCustomMode.addEventListener('change', updateCoverUI);
     coverInstrumental.addEventListener('change', updateCoverUI);
     updateCoverUI();
 
-    // Cover Submit
+       // --- COVER SUBMIT ---
     const coverForm = document.getElementById('coverForm');
     const coverStatus = document.getElementById('coverStatusMessage');
 
@@ -203,31 +262,30 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             if(!coverFile) { alert('Please upload an audio file'); return; }
 
-            const modelVal = document.getElementById('coverModel').value;
+            // UPDATED: Get model from Radio Buttons (name="coverModel")
+            const selectedModelBtn = document.querySelector('input[name="coverModel"]:checked');
+            const modelVal = selectedModelBtn ? selectedModelBtn.value : 'V3_5';
+
             const promptVal = document.getElementById('coverPrompt').value;
             const titleVal = document.getElementById('coverTitle').value || "Cover Track";
             const styleVal = document.getElementById('coverStyle').value || "New Style";
 
-            // 1. Fake Generation
             const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
             pendingTempTracks.push(...tempIds);
 
             coverStatus.classList.remove('hidden');
-            coverStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading & Processing...';
+            coverStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting...';
 
-            // 2. Construct Payload
-            // NOTE: In a real app, you must upload the file first to get a URL.
-            // Here we mock the URL because we don't have the upload endpoint.
-            const fakeUploadUrl = "https://cdn.example.com/uploads/audio/" + coverFile.name;
+            const fakeUploadUrl = "https://cdn.example.com/" + coverFile.name;
 
             const payload = {
-                uploadUrl: fakeUploadUrl, // Required by API
+                uploadUrl: fakeUploadUrl,
                 customMode: coverCustomMode.checked,
                 instrumental: coverInstrumental.checked,
                 model: modelVal,
                 prompt: promptVal,
                 callBackUrl: "https://example.com/callback",
-                // Optional params
+                negativeTags: document.getElementById('coverNegativeTags').value,
                 styleWeight: parseFloat(document.getElementById('styleWeight').value),
                 audioWeight: parseFloat(document.getElementById('audioWeight').value),
                 weirdnessConstraint: parseFloat(document.getElementById('weirdness').value)
@@ -239,23 +297,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 payload.vocalGender = document.getElementById('coverVocalGender').value;
                 if(payload.instrumental) payload.prompt = "";
             }
-
             socket.emit('generate_cover', payload);
         });
     }
 
-
-    // ==========================================
-    // SOCKET LISTENERS (SHARED)
-    // ==========================================
+    // --- SOCKET LISTENERS ---
     socket.on('task_created', (data) => {
-        // Also handles cover task
         const statusEl = document.querySelector('.tab-content.active .status-box');
-        if(statusEl) {
-            statusEl.innerHTML = '<i class="fa-solid fa-check"></i> Task Started!';
-            setTimeout(() => statusEl.classList.add('hidden'), 2000);
-        }
-        
+        if(statusEl) { statusEl.innerHTML = '<i class="fa-solid fa-check"></i> Task Started!'; setTimeout(() => statusEl.classList.add('hidden'), 2000); }
         if (pendingTempTracks.length > 0) {
             library = library.map(track => {
                 if (pendingTempTracks.includes(track.id)) return { ...track, taskId: data.taskId };
@@ -272,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { taskId, status, tracks } = data;
         if (tracks && tracks.length > 0) {
             let needsRender = false;
-            tracks.forEach((serverTrack) => {
+            tracks.forEach((serverTrack, index) => {
                 let existingIndex = library.findIndex(t => t.id === serverTrack.id);
                 if (existingIndex === -1) {
                     existingIndex = library.findIndex(t => t.taskId === taskId && t.id.startsWith('temp_'));
@@ -305,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Helpers ---
     function createFakeGeneration(model, title, tags, lyrics) {
         const now = new Date().toISOString();
         const id1 = 'temp_' + Date.now() + '_1';
@@ -338,7 +386,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
-    // --- Render & Player (Same as before) ---
     const libraryGrid = document.getElementById('libraryGrid');
     function renderLibrary() {
         libraryGrid.innerHTML = '';
@@ -373,10 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Player, Menu, Audio Events code remains exactly as in previous version...
-    // (Omitting generic player logic to save space, assume it's pasted here from previous robust version)
-    // But ensure global functions (togglePlay, deleteTrack) are attached to window.
-    
     window.togglePlay = function(id) {
         const track = library.find(t => t.id === id);
         if (!track) return;

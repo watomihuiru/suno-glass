@@ -12,7 +12,7 @@
     <div class="bg-gradient"></div>
 
     <div class="main-container">
-        <!-- SIDEBAR -->
+        
         <nav class="glass-panel sidebar">
             <div class="logo"><i class="fa-solid fa-wave-square"></i> Suno AI</div>
             <ul class="menu">
@@ -23,7 +23,6 @@
             </ul>
         </nav>
 
-        <!-- CONTENT -->
         <main class="content-area">
             
             <!-- GENERATE TAB -->
@@ -31,7 +30,9 @@
                 <div class="glass-panel content-card">
                     <h2>Create New Track</h2>
                     <p class="subtitle">Describe the song you want to hear</p>
+                    
                     <form id="generateForm">
+                        
                         <div class="form-group">
                             <label style="margin-bottom: 12px; display:block;">Model Version</label>
                             <div class="model-selector">
@@ -48,10 +49,12 @@
                                 <div class="glider"></div>
                             </div>
                         </div>
+
                         <div class="settings-grid">
                             <div class="toggle-group"><label>Instrumental</label><label class="switch"><input type="checkbox" id="instrumental"><span class="slider round"></span></label></div>
                             <div class="toggle-group"><label>Custom Mode</label><label class="switch"><input type="checkbox" id="customMode"><span class="slider round"></span></label></div>
                         </div>
+
                         <div id="customFields" class="hidden">
                             <div class="form-group">
                                 <div class="label-row"><label>Title</label><span id="titleCounter" class="char-counter">0 / 80</span></div>
@@ -61,11 +64,48 @@
                                 <div class="label-row"><label>Style (Genre)</label><span id="styleCounter" class="char-counter">0 / 200</span></div>
                                 <input type="text" id="style" placeholder="Pop, Rock, Electronic...">
                             </div>
+                            <div class="form-group">
+                                <label>Vocal Gender</label>
+                                <select id="vocalGender" class="glass-select">
+                                    <option value="">Random / Default</option>
+                                    <option value="m">Male</option>
+                                    <option value="f">Female</option>
+                                </select>
+                            </div>
                         </div>
+
                         <div class="form-group" id="promptContainer">
                             <div class="label-row"><label id="promptLabel">Song Description</label><span id="promptCounter" class="char-counter">0 / 3000</span></div>
                             <textarea id="prompt" placeholder="A futuristic synthwave track with deep bass and neon vibes..." required></textarea>
                         </div>
+
+                        <div class="advanced-section">
+                            <div class="advanced-toggle" id="genAdvancedToggle">
+                                <span>Advanced Settings</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div class="advanced-content" id="genAdvancedContent">
+                                <div class="form-group" style="margin-top: 15px;">
+                                    <label>Negative Tags (Exclude)</label>
+                                    <input type="text" id="negativeTags" placeholder="e.g. Drums, Guitar, Male vocals">
+                                </div>
+                                <div class="sliders-grid">
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Style Weight</label><span id="genValStyle">0.65</span></div>
+                                        <input type="range" id="genStyleWeight" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Audio Weight</label><span id="genValAudio">0.65</span></div>
+                                        <input type="range" id="genAudioWeight" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Weirdness</label><span id="genValWeird">0.65</span></div>
+                                        <input type="range" id="genWeirdness" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="generate-btn"><i class="fa-solid fa-bolt"></i> Generate Music</button>
                     </form>
                     <div id="statusMessage" class="status-box hidden"><i class="fa-solid fa-circle-notch fa-spin"></i> Generating...</div>
@@ -76,20 +116,17 @@
             <section id="extend" class="tab-content">
                 <div class="glass-panel content-card">
                     <h2>Extend Track</h2>
-                    <p class="subtitle">Seamlessly continue an existing song</p>
                     <div class="skeleton-ui"><button class="generate-btn disabled">Feature Coming Soon</button></div>
                 </div>
             </section>
 
-            <!-- COVER TAB (NEW) -->
+            <!-- COVER TAB -->
             <section id="cover" class="tab-content">
                 <div class="glass-panel content-card">
                     <h2>Remix / Cover</h2>
                     <p class="subtitle">Change the style of an audio file while keeping melody</p>
                     
                     <form id="coverForm">
-                        
-                        <!-- Upload Zone -->
                         <div class="form-group">
                             <label>Upload Audio (Max 2 min)</label>
                             <div class="upload-zone" id="uploadZone">
@@ -110,46 +147,38 @@
                             </div>
                         </div>
 
-                        <!-- Model Selector (Reusable UI, distinct ID) -->
+                        <!-- NEW COVER MODEL SELECTOR (PILL STYLE) -->
                         <div class="form-group">
-                            <label>Model Version</label>
-                            <select id="coverModel" class="glass-select">
-                                <option value="V5">v5 (Recommended)</option>
-                                <option value="V4_5">v4.5</option>
-                                <option value="V4_5PLUS">v4.5+</option>
-                                <option value="V4">v4</option>
-                                <option value="V3_5">v3.5</option>
-                            </select>
+                            <label style="margin-bottom: 12px; display:block;">Model Version</label>
+                            <div class="model-selector">
+                                <!-- Notice different IDs: cm_ instead of m_ -->
+                                <input type="radio" name="coverModel" id="cm_v3_5" value="V3_5">
+                                <label for="cm_v3_5">v3.5</label>
+
+                                <input type="radio" name="coverModel" id="cm_v4" value="V4">
+                                <label for="cm_v4">v4</label>
+
+                                <input type="radio" name="coverModel" id="cm_v4_5" value="V4_5">
+                                <label for="cm_v4_5">v4.5</label>
+
+                                <input type="radio" name="coverModel" id="cm_v4_5_plus" value="V4_5_PLUS">
+                                <label for="cm_v4_5_plus">v4.5+</label>
+
+                                <input type="radio" name="coverModel" id="cm_v5" value="V5" checked>
+                                <label for="cm_v5">v5</label>
+
+                                <div class="glider"></div>
+                            </div>
                         </div>
 
-                        <!-- Toggles -->
                         <div class="settings-grid">
-                            <div class="toggle-group">
-                                <label>Instrumental</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="coverInstrumental">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="toggle-group">
-                                <label>Custom Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="coverCustomMode">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
+                            <div class="toggle-group"><label>Instrumental</label><label class="switch"><input type="checkbox" id="coverInstrumental"><span class="slider round"></span></label></div>
+                            <div class="toggle-group"><label>Custom Mode</label><label class="switch"><input type="checkbox" id="coverCustomMode"><span class="slider round"></span></label></div>
                         </div>
 
-                        <!-- Custom Fields -->
                         <div id="coverCustomFields" class="hidden">
-                            <div class="form-group">
-                                <label>Title</label>
-                                <input type="text" id="coverTitle" placeholder="New Song Title">
-                            </div>
-                            <div class="form-group">
-                                <label>Style (Required)</label>
-                                <input type="text" id="coverStyle" placeholder="Jazz, Classical, Reggae...">
-                            </div>
+                            <div class="form-group"><label>Title</label><input type="text" id="coverTitle" placeholder="New Song Title"></div>
+                            <div class="form-group"><label>Style (Required)</label><input type="text" id="coverStyle" placeholder="Jazz, Classical, Reggae..."></div>
                             <div class="form-group">
                                 <label>Vocal Gender</label>
                                 <select id="coverVocalGender" class="glass-select">
@@ -160,38 +189,44 @@
                             </div>
                         </div>
 
-                        <!-- Prompt (Lyrics) -->
                         <div class="form-group" id="coverPromptContainer">
                             <label id="coverPromptLabel">Song Description</label>
                             <textarea id="coverPrompt" placeholder="Describe the vibe or paste lyrics..."></textarea>
                         </div>
 
-                        <!-- Advanced Sliders -->
-                        <div class="advanced-settings">
-                            <div class="slider-control">
-                                <div class="label-row"><label>Style Weight</label><span id="valStyle">0.65</span></div>
-                                <input type="range" id="styleWeight" min="0" max="1" step="0.01" value="0.65">
+                        <div class="advanced-section">
+                            <div class="advanced-toggle" id="coverAdvancedToggle">
+                                <span>Advanced Settings</span>
+                                <i class="fa-solid fa-chevron-down"></i>
                             </div>
-                            <div class="slider-control">
-                                <div class="label-row"><label>Audio Weight</label><span id="valAudio">0.65</span></div>
-                                <input type="range" id="audioWeight" min="0" max="1" step="0.01" value="0.65">
-                            </div>
-                            <div class="slider-control">
-                                <div class="label-row"><label>Weirdness</label><span id="valWeird">0.65</span></div>
-                                <input type="range" id="weirdness" min="0" max="1" step="0.01" value="0.65">
+                            <div class="advanced-content" id="coverAdvancedContent">
+                                <div class="form-group" style="margin-top: 15px;">
+                                    <label>Negative Tags</label>
+                                    <input type="text" id="coverNegativeTags" placeholder="e.g. Drums, Guitar">
+                                </div>
+                                <div class="sliders-grid">
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Style Weight</label><span id="valStyle">0.65</span></div>
+                                        <input type="range" id="styleWeight" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Audio Weight</label><span id="valAudio">0.65</span></div>
+                                        <input type="range" id="audioWeight" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                    <div class="slider-control">
+                                        <div class="label-row"><label>Weirdness</label><span id="valWeird">0.65</span></div>
+                                        <input type="range" id="weirdness" min="0" max="1" step="0.01" value="0.65">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <button type="submit" class="generate-btn">
-                            <i class="fa-solid fa-record-vinyl"></i> Create Cover
-                        </button>
+                        <button type="submit" class="generate-btn"><i class="fa-solid fa-record-vinyl"></i> Create Cover</button>
                     </form>
-                    
                     <div id="coverStatusMessage" class="status-box hidden"></div>
                 </div>
             </section>
 
-            <!-- LOGS TAB -->
             <section id="logs" class="tab-content">
                 <div class="glass-panel content-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -217,11 +252,11 @@
         </div>
         <div class="player-center-group">
             <div class="player-controls">
-                <button class="control-btn" id="shuffleBtn"><i class="fa-solid fa-shuffle"></i></button>
-                <button class="control-btn" id="prevBtn"><i class="fa-solid fa-backward-step"></i></button>
+                <button class="control-btn" id="shuffleBtn" title="Shuffle"><i class="fa-solid fa-shuffle"></i></button>
+                <button class="control-btn" id="prevBtn" title="Previous"><i class="fa-solid fa-backward-step"></i></button>
                 <button class="control-btn play-main" id="playPauseBtn"><i class="fa-solid fa-play"></i></button>
-                <button class="control-btn" id="nextBtn"><i class="fa-solid fa-forward-step"></i></button>
-                <button class="control-btn" id="loopBtn"><i class="fa-solid fa-repeat"></i></button>
+                <button class="control-btn" id="nextBtn" title="Next"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="control-btn" id="loopBtn" title="Repeat One"><i class="fa-solid fa-repeat"></i></button>
             </div>
             <div class="player-progress-container"><span id="currentTime" class="time-text">0:00</span><input type="range" id="progressBar" value="0" min="0" max="100"><span id="duration" class="time-text">0:00</span></div>
         </div>

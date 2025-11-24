@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isShuffle = false;
     let isLoop = false;
 
-    // --- INIT ---
+    // --- INIT & LIBRARY ---
     function loadLibrary() {
         try {
             const stored = localStorage.getItem('suno_library');
@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             console.error("Failed to load library", e);
-            // Не перезаписываем localStorage, чтобы не удалить данные при ошибке чтения
         }
     }
     function saveLibrary() {
@@ -41,13 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return rawName;
     }
 
-    // --- Helper: Setup Advanced Toggles ---
+    // --- ADVANCED TOGGLES ---
     function setupAdvancedToggle(toggleId, contentId) {
         const toggle = document.getElementById(toggleId);
         const content = document.getElementById(contentId);
         
         if (toggle && content) {
-            // Удаляем старые слушатели (клон ноды - хак для очистки)
+            // Удаляем старые слушатели через клонирование
             const newToggle = toggle.cloneNode(true);
             toggle.parentNode.replaceChild(newToggle, toggle);
             
@@ -55,17 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 newToggle.classList.toggle('active');
                 content.classList.toggle('open');
             });
-        } else {
-            console.warn(`Advanced toggle not found: ${toggleId}`);
         }
     }
-
-    // Вызываем настройку тогглов
     setupAdvancedToggle('genAdvancedToggle', 'genAdvancedContent');
     setupAdvancedToggle('coverAdvancedToggle', 'coverAdvancedContent');
 
-
-    // --- Input Counters ---
+    // --- INPUT COUNTERS ---
     const promptInput = document.getElementById('prompt');
     const styleInput = document.getElementById('style');
     const titleInput = document.getElementById('title');
@@ -93,13 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedModelBtn = document.querySelector('input[name="model"]:checked');
         if (!selectedModelBtn) return;
         const limits = MODEL_LIMITS[selectedModelBtn.value] || MODEL_LIMITS['V3_5'];
+        
         if (promptInput) { promptInput.maxLength = limits.prompt; updateCounter(promptInput, promptCounter); }
         if (styleInput) { styleInput.maxLength = limits.style; updateCounter(styleInput, styleCounter); }
         if (titleInput) { titleInput.maxLength = 80; updateCounter(titleInput, titleCounter); }
     }
     document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', updateInputLimits));
 
-    // Slider Listeners
+    // --- SLIDERS ---
     function bindSlider(id, labelId) {
         const el = document.getElementById(id);
         if(el) el.addEventListener('input', (e) => document.getElementById(labelId).innerText = e.target.value);
@@ -206,32 +201,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- COVER UI ---
+    // --- COVER UI & LOGIC ---
     const uploadZone = document.getElementById('uploadZone');
     const coverFileInput = document.getElementById('coverFileInput');
     const uploadContent = document.getElementById('uploadContent');
     const filePreview = document.getElementById('filePreview');
     const removeFileBtn = document.getElementById('removeFileBtn');
+    
+    const trackPreview = document.getElementById('trackPreview');
+    const removeTrackBtn = document.getElementById('removeTrackBtn');
+    const coverAudioUrlInput = document.getElementById('coverAudioUrl');
+    
     let coverFile = null;
 
-    uploadZone.addEventListener('click', () => coverFileInput.click());
-    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-    uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+    uploadZone.addEventListener('click', () => {
+        // Если уже выбран трек из библиотеки, не открываем выбор файла
+        if (!coverAudioUrlInput.value) coverFileInput.click();
+    });
+    
     coverFileInput.addEventListener('change', () => { if(coverFileInput.files.length) handleFile(coverFileInput.files[0]); });
     removeFileBtn.addEventListener('click', (e) => { e.stopPropagation(); resetFile(); });
+    
+    if(removeTrackBtn) {
+        removeTrackBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            coverAudioUrlInput.value = '';
+            trackPreview.classList.add('hidden');
+            uploadContent.classList.remove('hidden');
+        });
+    }
 
     function handleFile(file) {
         if(file.size > 10 * 1024 * 1024) { alert('File too large'); return; }
         if(!file.type.startsWith('audio/')) { alert('Audio only'); return; }
+        coverAudioUrlInput.value = ''; // Reset URL
+        trackPreview.classList.add('hidden');
         coverFile = file;
         uploadContent.classList.add('hidden');
         filePreview.classList.remove('hidden');
         filePreview.querySelector('.file-name').innerText = file.name;
         filePreview.querySelector('.file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
     }
-    function resetFile() { coverFile = null; coverFileInput.value = ''; uploadContent.classList.remove('hidden'); filePreview.classList.add('hidden'); }
+    function resetFile() {
+        coverFile = null; coverFileInput.value = '';
+        uploadContent.classList.remove('hidden'); filePreview.classList.add('hidden');
+    }
 
+    // Cover UI Settings
     const coverCustomMode = document.getElementById('coverCustomMode');
     const coverInstrumental = document.getElementById('coverInstrumental');
     const coverCustomFields = document.getElementById('coverCustomFields');
@@ -253,19 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
     coverInstrumental.addEventListener('change', updateCoverUI);
     updateCoverUI();
 
-       // --- COVER SUBMIT ---
     const coverForm = document.getElementById('coverForm');
     const coverStatus = document.getElementById('coverStatusMessage');
 
     if(coverForm) {
         coverForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            if(!coverFile) { alert('Please upload an audio file'); return; }
+            
+            const hasFile = !!coverFile;
+            const hasUrl = !!coverAudioUrlInput.value;
+            if(!hasFile && !hasUrl) { alert('Please upload an audio file or select a track from library'); return; }
 
-            // UPDATED: Get model from Radio Buttons (name="coverModel")
-            const selectedModelBtn = document.querySelector('input[name="coverModel"]:checked');
-            const modelVal = selectedModelBtn ? selectedModelBtn.value : 'V3_5';
-
+            const modelVal = document.querySelector('input[name="coverModel"]:checked').value;
             const promptVal = document.getElementById('coverPrompt').value;
             const titleVal = document.getElementById('coverTitle').value || "Cover Track";
             const styleVal = document.getElementById('coverStyle').value || "New Style";
@@ -276,10 +291,15 @@ document.addEventListener('DOMContentLoaded', () => {
             coverStatus.classList.remove('hidden');
             coverStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting...';
 
-            const fakeUploadUrl = "https://cdn.example.com/" + coverFile.name;
+            let finalUploadUrl = "";
+            if (hasUrl) {
+                finalUploadUrl = coverAudioUrlInput.value;
+            } else {
+                finalUploadUrl = "https://cdn.example.com/" + coverFile.name; // Mock URL
+            }
 
             const payload = {
-                uploadUrl: fakeUploadUrl,
+                uploadUrl: finalUploadUrl,
                 customMode: coverCustomMode.checked,
                 instrumental: coverInstrumental.checked,
                 model: modelVal,
@@ -323,6 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let needsRender = false;
             tracks.forEach((serverTrack, index) => {
                 let existingIndex = library.findIndex(t => t.id === serverTrack.id);
+                
+                // Если не нашли по ID, ищем по taskId (фейки)
                 if (existingIndex === -1) {
                     existingIndex = library.findIndex(t => t.taskId === taskId && t.id.startsWith('temp_'));
                     if (existingIndex !== -1) {
@@ -386,6 +408,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
+    // --- LIBRARY MENU ACTIONS ---
+    window.prepareCover = function(id) {
+        const track = library.find(t => t.id === id);
+        if (!track) return;
+        if (!track.audioUrl) { alert("Audio URL is missing for this track."); return; }
+
+        document.querySelectorAll('.menu li').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+        const coverTab = document.querySelector('[data-tab="cover"]');
+        if(coverTab) coverTab.classList.add('active');
+        const coverSection = document.getElementById('cover');
+        if(coverSection) coverSection.classList.add('active');
+
+        resetFile();
+        const coverAudioUrlInput = document.getElementById('coverAudioUrl');
+        const trackPreview = document.getElementById('trackPreview');
+        const uploadContent = document.getElementById('uploadContent');
+        const filePreview = document.getElementById('filePreview');
+
+        coverAudioUrlInput.value = track.audioUrl;
+        uploadContent.classList.add('hidden');
+        filePreview.classList.add('hidden');
+        trackPreview.classList.remove('hidden');
+        
+        document.getElementById('trackPreviewImg').src = track.imageUrl;
+        document.getElementById('trackPreviewTitle').innerText = track.title;
+    };
+
+    window.downloadTrack = function(id) {
+        const track = library.find(t => t.id === id);
+        if (!track || !track.audioUrl) return;
+        const link = document.createElement('a');
+        link.href = track.audioUrl;
+        link.download = `${track.title}.mp3`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // --- RENDER LIBRARY ---
     const libraryGrid = document.getElementById('libraryGrid');
     function renderLibrary() {
         libraryGrid.innerHTML = '';
@@ -394,6 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isGenerating = (track.status !== 'complete' && track.status !== 'SUCCESS') || !track.audioUrl;
             const isCurrent = track.id === currentTrackId;
             const playIcon = (isCurrent && isPlaying) ? 'fa-pause' : 'fa-play';
+
             const card = document.createElement('div');
             card.className = `track-card ${isGenerating ? 'generating' : ''} ${isCurrent ? 'playing' : ''}`;
             card.setAttribute('data-id', track.id);
@@ -411,6 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="track-menu-btn" onclick="toggleMenu(event, '${track.id}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                     <div class="dropdown-menu" id="menu-${track.id}">
                         <div class="dropdown-item" onclick="openLyrics('${track.id}')"><i class="fa-solid fa-align-left"></i> Lyrics</div>
+                        <div class="dropdown-item" onclick="prepareCover('${track.id}')"><i class="fa-solid fa-record-vinyl"></i> Create Cover</div>
+                        <div class="dropdown-item" onclick="downloadTrack('${track.id}')"><i class="fa-solid fa-download"></i> Download</div>
                         <div class="dropdown-item delete" onclick="deleteTrack('${track.id}')"><i class="fa-solid fa-trash"></i> Delete</div>
                     </div>
                 </div>` : ''}
@@ -420,17 +486,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- GLOBAL FUNCTIONS ---
     window.togglePlay = function(id) {
-        const track = library.find(t => t.id === id);
-        if (!track) return;
-        if (currentTrackId !== id) { loadTrack(track); audio.play(); isPlaying = true; } 
-        else { if (audio.paused) { audio.play(); isPlaying = true; } else { audio.pause(); isPlaying = false; } }
+        const track = library.find(t => t.id === id); if(!track) return;
+        if(currentTrackId!==id){ loadTrack(track); audio.play(); isPlaying=true; } else { if(audio.paused){audio.play(); isPlaying=true;} else{audio.pause(); isPlaying=false;} }
         updatePlayButtonUI(); renderLibrary();
     };
-    window.toggleMenu = function(e, id) { e.stopPropagation(); document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); const menu = document.getElementById(`menu-${id}`); if (menu) menu.classList.toggle('show'); };
+    window.toggleMenu = function(e, id) { e.stopPropagation(); document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); const menu = document.getElementById(`menu-${id}`); if(menu) menu.classList.toggle('show'); };
     document.addEventListener('click', () => { document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); });
-    window.deleteTrack = function(id) { if(confirm('Delete?')) { library = library.filter(t => t.id !== id); if(progressTimers[id]) clearInterval(progressTimers[id]); saveLibrary(); renderLibrary(); if (currentTrackId === id) resetPlayerUI(); } };
-    
+    window.deleteTrack = function(id) { if(confirm('Delete?')){ library = library.filter(t => t.id !== id); saveLibrary(); renderLibrary(); if(currentTrackId===id) resetPlayerUI(); } };
+
     const modal = document.getElementById('lyricsModal');
     const closeBtn = document.getElementById('closeModalBtn');
     window.openLyrics = function(id) {
@@ -440,6 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
+    // --- PLAYER CONTROLS ---
     const audio = document.getElementById('audioElement');
     const playPauseBtn = document.getElementById('playPauseBtn');
     const progressBar = document.getElementById('progressBar');
@@ -448,22 +514,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
 
-    function loadTrack(track) { currentTrackId = track.id; document.getElementById('playerCover').src = track.imageUrl; document.getElementById('playerTitle').innerText = track.title || 'Untitled'; document.getElementById('playerArtist').innerText = track.tags || 'Suno AI'; audio.src = track.audioUrl; }
+    function loadTrack(track) { currentTrackId = track.id; document.getElementById('playerCover').src = track.imageUrl; document.getElementById('playerTitle').innerText = track.title; document.getElementById('playerArtist').innerText = track.tags; audio.src = track.audioUrl; }
     function resetPlayerUI() { currentTrackId = null; isPlaying = false; document.getElementById('playerCover').src = 'https://placehold.co/60'; document.getElementById('playerTitle').innerText = 'Select a track'; document.getElementById('playerArtist').innerText = 'Suno AI'; updatePlayButtonUI(); }
     function updatePlayButtonUI() { playPauseBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>'; }
     
-    playPauseBtn.addEventListener('click', () => { if (!currentTrackId && library.length > 0) { const ready = library.filter(t=>t.status==='complete'); if(ready.length) window.togglePlay(ready[0].id); return; } if(currentTrackId) window.togglePlay(currentTrackId); });
+    playPauseBtn.addEventListener('click', () => { if(!currentTrackId && library.length>0) { const ready = library.filter(t=>t.status==='complete' || t.status === 'SUCCESS'); if(ready.length) window.togglePlay(ready[0].id); return; } if(currentTrackId) window.togglePlay(currentTrackId); });
     shuffleBtn.addEventListener('click', () => { isShuffle = !isShuffle; shuffleBtn.classList.toggle('active', isShuffle); });
     loopBtn.addEventListener('click', () => { isLoop = !isLoop; loopBtn.classList.toggle('active', isLoop); });
 
     function playNext() {
-        const ready = library.filter(t => t.status === 'complete'); if(!ready.length) return;
+        const ready = library.filter(t => t.status === 'complete' || t.status === 'SUCCESS'); if(!ready.length) return;
         let idx = ready.findIndex(t => t.id === currentTrackId);
         if(isShuffle) idx = Math.floor(Math.random()*ready.length); else { idx++; if(idx>=ready.length) idx=0; }
         window.togglePlay(ready[idx].id);
     }
     function playPrev() {
-        const ready = library.filter(t => t.status === 'complete'); if(!ready.length) return;
+        const ready = library.filter(t => t.status === 'complete' || t.status === 'SUCCESS'); if(!ready.length) return;
         if(audio.currentTime > 3) { audio.currentTime = 0; return; }
         let idx = ready.findIndex(t => t.id === currentTrackId);
         if(isShuffle) idx = Math.floor(Math.random()*ready.length); else { idx--; if(idx<0) idx=ready.length-1; }
@@ -474,15 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
     audio.addEventListener('play', () => { isPlaying = true; updatePlayButtonUI(); });
     audio.addEventListener('pause', () => { isPlaying = false; updatePlayButtonUI(); renderLibrary(); });
     audio.addEventListener('ended', () => { if(isLoop) { audio.currentTime=0; audio.play(); } else playNext(); });
-    audio.addEventListener('timeupdate', () => {
-        if (!audio.duration) return;
-        const pct = (audio.currentTime / audio.duration) * 100;
-        progressBar.value = pct || 0; progressBar.style.setProperty('--seek-before-width', `${pct}%`);
-        document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
-        document.getElementById('duration').innerText = formatTime(audio.duration || 0);
-    });
-    progressBar.addEventListener('input', (e) => { if (!audio.duration) return; audio.currentTime = (e.target.value / 100) * audio.duration; progressBar.style.setProperty('--seek-before-width', `${e.target.value}%`); });
-    function formatTime(s) { const m = Math.floor(s / 60); const sc = Math.floor(s % 60); return `${m}:${sc < 10 ? '0' : ''}${sc}`; }
+    audio.addEventListener('timeupdate', () => { if(!audio.duration) return; const pct = (audio.currentTime/audio.duration)*100; progressBar.value = pct; progressBar.style.setProperty('--seek-before-width', `${pct}%`); document.getElementById('currentTime').innerText = formatTime(audio.currentTime); document.getElementById('duration').innerText = formatTime(audio.duration); });
+    progressBar.addEventListener('input', (e) => { if(!audio.duration) return; audio.currentTime = (e.target.value/100)*audio.duration; progressBar.style.setProperty('--seek-before-width', `${e.target.value}%`); });
+    function formatTime(s) { const m = Math.floor(s/60); const sc = Math.floor(s%60); return `${m}:${sc<10?'0':''}${sc}`; }
 
     loadLibrary();
 });

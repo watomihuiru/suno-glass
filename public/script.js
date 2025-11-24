@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = document.getElementById(contentId);
         
         if (toggle && content) {
-            // Удаляем старые слушатели через клонирование
             const newToggle = toggle.cloneNode(true);
             toggle.parentNode.replaceChild(newToggle, toggle);
             
@@ -60,20 +59,32 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAdvancedToggle('coverAdvancedToggle', 'coverAdvancedContent');
 
     // --- INPUT COUNTERS ---
-    const promptInput = document.getElementById('prompt');
-    const styleInput = document.getElementById('style');
-    const titleInput = document.getElementById('title');
-    const promptCounter = document.getElementById('promptCounter');
-    const styleCounter = document.getElementById('styleCounter');
-    const titleCounter = document.getElementById('titleCounter');
+    const genPrompt = document.getElementById('prompt');
+    const genStyle = document.getElementById('style');
+    const genTitle = document.getElementById('title');
+    const genPromptCnt = document.getElementById('promptCounter');
+    const genStyleCnt = document.getElementById('styleCounter');
+    const genTitleCnt = document.getElementById('titleCounter');
+
+    const covPrompt = document.getElementById('coverPrompt');
+    const covStyle = document.getElementById('coverStyle');
+    const covTitle = document.getElementById('coverTitle');
+    const covPromptCnt = document.getElementById('coverPromptCounter');
+    const covStyleCnt = document.getElementById('coverStyleCounter');
+    const covTitleCnt = document.getElementById('coverTitleCounter');
 
     function updateCounter(input, counterElement) {
         if (!input || !counterElement) return;
         counterElement.innerText = `${input.value.length} / ${input.maxLength}`;
     }
-    if(promptInput) promptInput.addEventListener('input', () => updateCounter(promptInput, promptCounter));
-    if(styleInput) styleInput.addEventListener('input', () => updateCounter(styleInput, styleCounter));
-    if(titleInput) titleInput.addEventListener('input', () => updateCounter(titleInput, titleCounter));
+
+    if(genPrompt) genPrompt.addEventListener('input', () => updateCounter(genPrompt, genPromptCnt));
+    if(genStyle) genStyle.addEventListener('input', () => updateCounter(genStyle, genStyleCnt));
+    if(genTitle) genTitle.addEventListener('input', () => updateCounter(genTitle, genTitleCnt));
+    
+    if(covPrompt) covPrompt.addEventListener('input', () => updateCounter(covPrompt, covPromptCnt));
+    if(covStyle) covStyle.addEventListener('input', () => updateCounter(covStyle, covStyleCnt));
+    if(covTitle) covTitle.addEventListener('input', () => updateCounter(covTitle, covTitleCnt));
 
     const MODEL_LIMITS = {
         'V3_5': { prompt: 3000, style: 200 },
@@ -84,15 +95,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function updateInputLimits() {
-        const selectedModelBtn = document.querySelector('input[name="model"]:checked');
-        if (!selectedModelBtn) return;
-        const limits = MODEL_LIMITS[selectedModelBtn.value] || MODEL_LIMITS['V3_5'];
-        
-        if (promptInput) { promptInput.maxLength = limits.prompt; updateCounter(promptInput, promptCounter); }
-        if (styleInput) { styleInput.maxLength = limits.style; updateCounter(styleInput, styleCounter); }
-        if (titleInput) { titleInput.maxLength = 80; updateCounter(titleInput, titleCounter); }
+        const genModelBtn = document.querySelector('input[name="model"]:checked');
+        if (genModelBtn) {
+            const limits = MODEL_LIMITS[genModelBtn.value] || MODEL_LIMITS['V3_5'];
+            if (genPrompt) { genPrompt.maxLength = limits.prompt; updateCounter(genPrompt, genPromptCnt); }
+            if (genStyle) { genStyle.maxLength = limits.style; updateCounter(genStyle, genStyleCnt); }
+            if (genTitle) { genTitle.maxLength = 80; updateCounter(genTitle, genTitleCnt); }
+        }
+
+        const covModelBtn = document.querySelector('input[name="coverModel"]:checked');
+        if (covModelBtn) {
+            const limits = MODEL_LIMITS[covModelBtn.value] || MODEL_LIMITS['V3_5'];
+            if (covPrompt) { covPrompt.maxLength = limits.prompt; updateCounter(covPrompt, covPromptCnt); }
+            if (covStyle) { covStyle.maxLength = limits.style; updateCounter(covStyle, covStyleCnt); }
+            if (covTitle) { covTitle.maxLength = 80; updateCounter(covTitle, covTitleCnt); }
+        }
     }
-    document.querySelectorAll('input[name="model"]').forEach(r => r.addEventListener('change', updateInputLimits));
+    document.querySelectorAll('input[name="model"], input[name="coverModel"]').forEach(r => {
+        r.addEventListener('change', updateInputLimits);
+    });
 
     // --- SLIDERS ---
     function bindSlider(id, labelId) {
@@ -141,17 +162,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const customFields = document.getElementById('customFields');
     const promptContainer = document.getElementById('promptContainer');
     const promptLabel = document.getElementById('promptLabel');
+    const vocalGenderGroup = document.getElementById('vocalGenderGroup');
 
     function updateGenUI() {
         const isCustom = customModeToggle.checked;
         const isInst = instrumentalToggle.checked;
         if (isCustom) {
             customFields.classList.remove('hidden');
-            if (isInst) { promptContainer.classList.add('hidden'); } 
-            else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; promptInput.placeholder = "[Verse 1]..."; }
+            if (isInst) { promptContainer.classList.add('hidden'); if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); } 
+            else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; genPrompt.placeholder = "[Verse 1]..."; if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); }
         } else {
             customFields.classList.add('hidden');
-            promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; promptInput.placeholder = "A futuristic synthwave track...";
+            promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; genPrompt.placeholder = "A futuristic synthwave track...";
         }
     }
     if(customModeToggle) {
@@ -163,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GENERATE SUBMIT ---
     const generateForm = document.getElementById('generateForm');
-    const statusBox = document.getElementById('statusMessage');
+    // УДАЛЕНО: const statusBox = document.getElementById('statusMessage'); // Это вызывало ошибку
 
     if(generateForm) {
         generateForm.addEventListener('submit', (e) => {
@@ -176,8 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
             pendingTempTracks.push(...tempIds);
 
-            statusBox.classList.remove('hidden');
-            statusBox.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Requesting...';
+            // УДАЛЕНО ОБРАЩЕНИЕ К statusBox
 
             const payload = {
                 prompt: promptVal,
@@ -194,8 +215,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if(payload.customMode) {
                 payload.style = styleVal; 
                 payload.title = titleVal;
-                payload.vocalGender = document.getElementById('vocalGender').value;
-                if(payload.instrumental) payload.prompt = ""; 
+                // Only send vocal gender if NOT instrumental
+                if(!payload.instrumental) {
+                    payload.vocalGender = document.getElementById('vocalGender').value;
+                } else {
+                    payload.prompt = ""; 
+                }
             }
             socket.emit('generate_music', payload);
         });
@@ -215,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let coverFile = null;
 
     uploadZone.addEventListener('click', () => {
-        // Если уже выбран трек из библиотеки, не открываем выбор файла
         if (!coverAudioUrlInput.value) coverFileInput.click();
     });
     
@@ -234,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFile(file) {
         if(file.size > 10 * 1024 * 1024) { alert('File too large'); return; }
         if(!file.type.startsWith('audio/')) { alert('Audio only'); return; }
-        coverAudioUrlInput.value = ''; // Reset URL
+        coverAudioUrlInput.value = ''; 
         trackPreview.classList.add('hidden');
         coverFile = file;
         uploadContent.classList.add('hidden');
@@ -247,22 +271,29 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadContent.classList.remove('hidden'); filePreview.classList.add('hidden');
     }
 
-    // Cover UI Settings
     const coverCustomMode = document.getElementById('coverCustomMode');
     const coverInstrumental = document.getElementById('coverInstrumental');
     const coverCustomFields = document.getElementById('coverCustomFields');
     const coverPromptContainer = document.getElementById('coverPromptContainer');
+    const coverPromptLabel = document.getElementById('coverPromptLabel');
+    const coverVocalGenderGroup = document.getElementById('coverVocalGenderGroup');
     
     function updateCoverUI() {
         const isCustom = coverCustomMode.checked;
         const isInst = coverInstrumental.checked;
         if(isCustom) {
             coverCustomFields.classList.remove('hidden');
-            if(isInst) coverPromptContainer.classList.add('hidden');
-            else { coverPromptContainer.classList.remove('hidden'); document.getElementById('coverPromptLabel').innerText = "Lyrics"; }
+            if(isInst) { 
+                coverPromptContainer.classList.add('hidden'); 
+                if(coverVocalGenderGroup) coverVocalGenderGroup.classList.add('hidden'); 
+            } else { 
+                coverPromptContainer.classList.remove('hidden'); 
+                coverPromptLabel.innerText = "Lyrics"; 
+                if(coverVocalGenderGroup) coverVocalGenderGroup.classList.remove('hidden'); 
+            }
         } else {
             coverCustomFields.classList.add('hidden');
-            coverPromptContainer.classList.remove('hidden'); document.getElementById('coverPromptLabel').innerText = "Song Description";
+            coverPromptContainer.classList.remove('hidden'); coverPromptLabel.innerText = "Song Description";
         }
     }
     coverCustomMode.addEventListener('change', updateCoverUI);
@@ -270,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCoverUI();
 
     const coverForm = document.getElementById('coverForm');
-    const coverStatus = document.getElementById('coverStatusMessage');
+    // УДАЛЕНО: const coverStatus = document.getElementById('coverStatusMessage');
 
     if(coverForm) {
         coverForm.addEventListener('submit', (e) => {
@@ -288,14 +319,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
             pendingTempTracks.push(...tempIds);
 
-            coverStatus.classList.remove('hidden');
-            coverStatus.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting...';
+            // REMOVED: coverStatus logic
 
             let finalUploadUrl = "";
             if (hasUrl) {
                 finalUploadUrl = coverAudioUrlInput.value;
             } else {
-                finalUploadUrl = "https://cdn.example.com/" + coverFile.name; // Mock URL
+                finalUploadUrl = "https://cdn.example.com/" + coverFile.name; 
             }
 
             const payload = {
@@ -314,8 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if(payload.customMode) {
                 payload.style = styleVal;
                 payload.title = titleVal;
-                payload.vocalGender = document.getElementById('coverVocalGender').value;
-                if(payload.instrumental) payload.prompt = "";
+                
+                if(!payload.instrumental) {
+                    payload.vocalGender = document.getElementById('coverVocalGender').value;
+                } else {
+                    payload.prompt = "";
+                }
             }
             socket.emit('generate_cover', payload);
         });
@@ -323,8 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SOCKET LISTENERS ---
     socket.on('task_created', (data) => {
-        const statusEl = document.querySelector('.tab-content.active .status-box');
-        if(statusEl) { statusEl.innerHTML = '<i class="fa-solid fa-check"></i> Task Started!'; setTimeout(() => statusEl.classList.add('hidden'), 2000); }
+        // NO UI UPDATE HERE, JUST LOGIC
         if (pendingTempTracks.length > 0) {
             library = library.map(track => {
                 if (pendingTempTracks.includes(track.id)) return { ...track, taskId: data.taskId };
@@ -343,8 +376,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let needsRender = false;
             tracks.forEach((serverTrack, index) => {
                 let existingIndex = library.findIndex(t => t.id === serverTrack.id);
-                
-                // Если не нашли по ID, ищем по taskId (фейки)
                 if (existingIndex === -1) {
                     existingIndex = library.findIndex(t => t.taskId === taskId && t.id.startsWith('temp_'));
                     if (existingIndex !== -1) {
@@ -412,14 +443,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.prepareCover = function(id) {
         const track = library.find(t => t.id === id);
         if (!track) return;
-        if (!track.audioUrl) { alert("Audio URL is missing for this track."); return; }
+        if (!track.audioUrl) { alert("Audio URL is missing."); return; }
 
         document.querySelectorAll('.menu li').forEach(i => i.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-        const coverTab = document.querySelector('[data-tab="cover"]');
-        if(coverTab) coverTab.classList.add('active');
-        const coverSection = document.getElementById('cover');
-        if(coverSection) coverSection.classList.add('active');
+        document.querySelector('[data-tab="cover"]').classList.add('active');
+        document.getElementById('cover').classList.add('active');
 
         resetFile();
         const coverAudioUrlInput = document.getElementById('coverAudioUrl');
@@ -448,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     };
 
-    // --- RENDER LIBRARY ---
+    // --- RENDER ---
     const libraryGrid = document.getElementById('libraryGrid');
     function renderLibrary() {
         libraryGrid.innerHTML = '';
@@ -486,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- GLOBAL FUNCTIONS ---
+    // --- GLOBAL ---
     window.togglePlay = function(id) {
         const track = library.find(t => t.id === id); if(!track) return;
         if(currentTrackId!==id){ loadTrack(track); audio.play(); isPlaying=true; } else { if(audio.paused){audio.play(); isPlaying=true;} else{audio.pause(); isPlaying=false;} }
@@ -505,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
-    // --- PLAYER CONTROLS ---
+    // --- PLAYER ---
     const audio = document.getElementById('audioElement');
     const playPauseBtn = document.getElementById('playPauseBtn');
     const progressBar = document.getElementById('progressBar');

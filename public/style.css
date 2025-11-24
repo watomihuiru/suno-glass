@@ -57,12 +57,40 @@ body { background-color: #09090b; color: var(--text-primary); height: 100vh; ove
 h2 { font-size: 24px; margin-bottom: 8px; }
 .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 30px; }
 
+/* ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ INPUT WRAPPER */
 .form-group { margin-bottom: 20px; }
-.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.form-group label { display: block; margin-bottom: 0; color: var(--text-secondary); font-size: 13px; font-weight: 500;}
-.char-counter { font-size: 11px; color: rgba(255, 255, 255, 0.4); font-family: monospace; }
+.input-wrapper { position: relative; } /* Для позиционирования счетчика */
 
-input[type="text"], textarea { width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--glass-border); color: white; padding: 12px; border-radius: var(--radius-sm); font-size: 14px; outline: none; transition: 0.2s; }
+.form-group label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 13px; font-weight: 500;}
+
+/* Новый стиль счетчика внутри поля */
+.char-counter {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none; /* Чтобы можно было кликнуть сквозь него */
+}
+
+/* INPUT STYLES FIX */
+input[type="text"], textarea {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 12px;
+    padding-right: 70px; /* УВЕЛИЧЕНО: Место для счетчика */
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    outline: none;
+    transition: 0.2s;
+    box-sizing: border-box; /* ВАЖНО: Чтобы padding не ломал ширину */
+}
 input:focus, textarea:focus { border-color: var(--accent-color); }
 textarea { height: 120px; resize: none; scrollbar-color: rgba(255,255,255,0.2) transparent; scrollbar-width: thin; }
 

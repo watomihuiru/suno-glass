@@ -118,17 +118,135 @@ document.addEventListener('DOMContentLoaded', () => {
         r.addEventListener('change', updateInputLimits);
     });
 
-    // --- SLIDERS ---
-    function bindSlider(id, labelId) {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener('input', (e) => document.getElementById(labelId).innerText = e.target.value);
+    // --- NEW FEATURE LOGIC ---
+
+    // 1. Gender Toggle Logic
+    function setupGenderToggle(groupId, hiddenInputId) {
+        const group = document.getElementById(groupId);
+        const input = document.getElementById(hiddenInputId);
+        if (!group || !input) return;
+
+        const options = group.querySelectorAll('.gender-option');
+        options.forEach(opt => {
+            opt.addEventListener('click', () => {
+                const val = opt.getAttribute('data-value');
+                // If clicking active, deselect
+                if (opt.classList.contains('active')) {
+                    opt.classList.remove('active');
+                    input.value = "";
+                } else {
+                    // Deselect others
+                    options.forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    input.value = val;
+                }
+                checkAdvancedState(); // Check for reset button
+            });
+        });
     }
-    bindSlider('styleWeight', 'valStyle');
-    bindSlider('audioWeight', 'valAudio');
-    bindSlider('weirdness', 'valWeird');
-    bindSlider('genStyleWeight', 'genValStyle');
-    bindSlider('genAudioWeight', 'genValAudio');
-    bindSlider('genWeirdness', 'genValWeird');
+    setupGenderToggle('genGenderOptions', 'vocalGender');
+    setupGenderToggle('covGenderOptions', 'coverVocalGender');
+
+    // 2. Sliders Visuals & Logic
+    function setupAdvancedSliders(ids) {
+        ids.forEach(id => {
+            const slider = document.getElementById(id);
+            if(!slider) return;
+            
+            // Init visual
+            updateSliderVisual(slider);
+
+            slider.addEventListener('input', (e) => {
+                slider.dataset.touched = "true";
+                updateSliderVisual(slider);
+                checkAdvancedState();
+            });
+        });
+    }
+
+    function updateSliderVisual(slider) {
+        // Convert value 0-1 to percentage
+        const val = parseFloat(slider.value);
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 1;
+        
+        // Ensure valid numbers
+        let percent = 0;
+        if (max > min) {
+            percent = ((val - min) / (max - min)) * 100;
+        }
+        
+        if(percent < 0) percent = 0;
+        if(percent > 100) percent = 100;
+
+        slider.style.setProperty('--val-percent', `${percent}%`);
+    }
+
+    const sliderIds = ['genStyleWeight', 'genAudioWeight', 'genWeirdness', 'styleWeight', 'audioWeight', 'weirdness'];
+    setupAdvancedSliders(sliderIds);
+
+    // 3. Reset Button Logic
+    function checkAdvancedState() {
+        // Check Generate Tab
+        const genResetBtn = document.getElementById('genResetBtn');
+        const genDirty = isDirty('negativeTags', 'vocalGender', ['genStyleWeight', 'genAudioWeight', 'genWeirdness']);
+        if(genResetBtn) genDirty ? genResetBtn.classList.remove('hidden') : genResetBtn.classList.add('hidden');
+
+        // Check Cover Tab
+        const covResetBtn = document.getElementById('coverResetBtn');
+        const covDirty = isDirty('coverNegativeTags', 'coverVocalGender', ['styleWeight', 'audioWeight', 'weirdness']);
+        if(covResetBtn) covDirty ? covResetBtn.classList.remove('hidden') : covResetBtn.classList.add('hidden');
+    }
+
+    function isDirty(tagId, genderId, sliderIds) {
+        const tag = document.getElementById(tagId);
+        if (tag && tag.value.trim() !== "") return true;
+        
+        const gender = document.getElementById(genderId);
+        if (gender && gender.value !== "") return true;
+
+        for (let id of sliderIds) {
+            const sl = document.getElementById(id);
+            if (sl && sl.dataset.touched === "true") return true;
+        }
+        return false;
+    }
+
+    function resetAdvanced(tagId, genderContainerId, genderInputId, sliderIds, btnId) {
+        // Reset Tags
+        const tag = document.getElementById(tagId);
+        if(tag) tag.value = "";
+
+        // Reset Gender
+        const genderInput = document.getElementById(genderInputId);
+        if(genderInput) genderInput.value = "";
+        const genderOpts = document.getElementById(genderContainerId).querySelectorAll('.gender-option');
+        genderOpts.forEach(o => o.classList.remove('active'));
+
+        // Reset Sliders (Back to black/0)
+        sliderIds.forEach(id => {
+            const sl = document.getElementById(id);
+            if(sl) {
+                sl.value = 0; // Reset to 0 (full black)
+                sl.dataset.touched = "false";
+                updateSliderVisual(sl);
+            }
+        });
+
+        // Hide Button
+        document.getElementById(btnId).classList.add('hidden');
+    }
+
+    document.getElementById('genResetBtn').addEventListener('click', () => 
+        resetAdvanced('negativeTags', 'genGenderOptions', 'vocalGender', ['genStyleWeight', 'genAudioWeight', 'genWeirdness'], 'genResetBtn'));
+    
+    document.getElementById('coverResetBtn').addEventListener('click', () => 
+        resetAdvanced('coverNegativeTags', 'covGenderOptions', 'coverVocalGender', ['styleWeight', 'audioWeight', 'weirdness'], 'coverResetBtn'));
+
+    // Listen for negative tags input
+    document.getElementById('negativeTags').addEventListener('input', checkAdvancedState);
+    document.getElementById('coverNegativeTags').addEventListener('input', checkAdvancedState);
+
 
     // --- TABS ---
     document.querySelectorAll('.menu li').forEach(item => {
@@ -172,21 +290,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isInst = instrumentalToggle.checked;
         if (isCustom) {
             customFields.classList.remove('hidden');
-            if (isInst) { 
-                promptContainer.classList.add('hidden'); 
-                if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); 
-            } 
-            else { 
-                promptContainer.classList.remove('hidden'); 
-                promptLabel.innerText = "Lyrics"; 
-                genPrompt.placeholder = "[Verse 1]..."; 
-                if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); 
-            }
+            if (isInst) { promptContainer.classList.add('hidden'); if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); } 
+            else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; genPrompt.placeholder = "[Verse 1]..."; if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); }
         } else {
             customFields.classList.add('hidden');
-            promptContainer.classList.remove('hidden'); 
-            promptLabel.innerText = "Song Description"; 
-            genPrompt.placeholder = "A futuristic synthwave track...";
+            promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; genPrompt.placeholder = "A futuristic synthwave track...";
         }
     }
     if(customModeToggle) {
@@ -216,11 +324,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 instrumental: instrumentalToggle.checked,
                 model: modelVal,
                 callBackUrl: "https://example.com/callback",
-                negativeTags: document.getElementById('negativeTags').value,
-                styleWeight: parseFloat(document.getElementById('genStyleWeight').value),
-                audioWeight: parseFloat(document.getElementById('genAudioWeight').value),
-                weirdnessConstraint: parseFloat(document.getElementById('genWeirdness').value)
+                negativeTags: document.getElementById('negativeTags').value || undefined
             };
+
+            // Add slider values only if touched
+            const sw = document.getElementById('genStyleWeight'); if(sw.dataset.touched === "true") payload.styleWeight = parseFloat(sw.value);
+            const aw = document.getElementById('genAudioWeight'); if(aw.dataset.touched === "true") payload.audioWeight = parseFloat(aw.value);
+            const wd = document.getElementById('genWeirdness'); if(wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
             
             if(payload.customMode) {
                 payload.style = styleVal; 
@@ -342,10 +452,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 prompt: promptVal,
                 callBackUrl: "https://example.com/callback",
                 negativeTags: document.getElementById('coverNegativeTags').value,
-                styleWeight: parseFloat(document.getElementById('styleWeight').value),
-                audioWeight: parseFloat(document.getElementById('audioWeight').value),
-                weirdnessConstraint: parseFloat(document.getElementById('weirdness').value)
+                // Optional params
             };
+
+            const sw = document.getElementById('styleWeight'); if(sw.dataset.touched === "true") payload.styleWeight = parseFloat(sw.value);
+            const aw = document.getElementById('audioWeight'); if(aw.dataset.touched === "true") payload.audioWeight = parseFloat(aw.value);
+            const wd = document.getElementById('weirdness'); if(wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
 
             if(payload.customMode) {
                 payload.style = styleVal;
@@ -429,9 +541,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function simulateProgress(trackId) {
         let progress = 0;
         if (progressTimers[trackId]) clearInterval(progressTimers[trackId]);
-        // Smooth fake progress for 120s
         progressTimers[trackId] = setInterval(() => {
-            progress += 0.8; // Approx 125 sec to 100%
+            progress += 0.8;
             const trackIndex = library.findIndex(t => t.id === trackId);
             if (trackIndex !== -1) {
                 library[trackIndex].progress = progress;

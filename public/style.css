@@ -210,14 +210,14 @@ input:checked + .slider:before { transform: translateX(16px); }
 .slider-control { position: relative; margin-bottom: 15px; }
 .slider-control label { font-size: 11px; display: block; margin-bottom: 5px; }
 
-/* --- NEW: CUSTOM SLIDER STYLE (LIKE REFERENCE) --- */
+/* --- NEW: INACTIVE SLIDER STYLE --- */
 input[type=range].inactive-slider {
     -webkit-appearance: none;
     width: 100%;
     height: 12px; /* Height of the bar */
     background: transparent;
     cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.8); /* White Border */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Less contrast border */
     border-radius: 10px; 
     padding: 0; 
     margin: 5px 0;
@@ -228,11 +228,12 @@ input[type=range].inactive-slider:focus { outline: none; }
 
 /* Track */
 input[type=range].inactive-slider::-webkit-slider-runnable-track {
-    width: 100%; height: 100%; background: #000; /* Default black */
+    width: 100%; height: 100%; 
+    background: rgba(0, 0, 0, 0.3); /* Darker background like inputs */
 }
 /* Filled Track */
 input[type=range].inactive-slider[data-touched="true"]::-webkit-slider-runnable-track {
-    background: linear-gradient(to right, #fff 0%, #fff var(--val-percent), #000 var(--val-percent), #000 100%);
+    background: linear-gradient(to right, #fff 0%, #fff var(--val-percent), rgba(0, 0, 0, 0.3) var(--val-percent), rgba(0, 0, 0, 0.3) 100%);
 }
 
 /* Thumb (Hidden) */
@@ -243,31 +244,48 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
 /* Hide number spans */
 .slider-control .label-row span { display: none; }
 
-/* --- NEW: GENDER TOGGLE --- */
-.gender-group {
-    display: flex; justify-content: space-between; align-items: center;
-    background: rgba(0,0,0,0.3); padding: 12px 15px; border-radius: var(--radius-sm);
-    border: 1px solid var(--glass-border);
+/* --- NEW: GENDER TOGGLE (PILL STYLE) --- */
+/* Reusing .model-selector logic but specific for gender */
+.gender-options {
+    display: flex; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--glass-border);
+    border-radius: 50px; padding: 4px; height: 44px; width: 100%;
 }
-.gender-group label { margin: 0; }
-.gender-options { display: flex; gap: 15px; }
 .gender-option {
-    font-size: 14px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; font-weight: 500;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    transition: color 0.3s ease, background 0.3s ease;
+    border-radius: 40px;
 }
 .gender-option:hover { color: white; }
-.gender-option.active { color: var(--accent-color); text-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
+.gender-option.active { background: white; color: black; }
 
-/* --- NEW: SUBMIT ROW & RESET BUTTON --- */
-.submit-row { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+/* --- NEW: SUBMIT ROW & RESET BUTTON ANIMATION --- */
+.submit-row { display: flex; align-items: center; gap: 10px; margin-top: 20px; overflow: hidden; } /* overflow hidden for slide effect */
 .generate-btn { flex: 1; width: auto; padding: 14px; background: var(--accent-color); color: white; border: none; border-radius: 50px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; } .generate-btn:hover { background: #565add; }
+
+/* Reset Button (Trash) */
 .reset-btn {
-    width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--glass-border);
-    background: rgba(255,255,255,0.05); color: #ef4444; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: 0.3s;
-    animation: fadeIn 0.3s ease;
+    width: 100%; /* Full width initially, but flex limits it */
+    flex: 0 0 50px; /* Fixed width */
+    height: 50px; border-radius: 50px; border: 1px solid var(--glass-border);
+    background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    animation: slideInLeft 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-.reset-btn:hover { background: rgba(239, 68, 68, 0.15); transform: rotate(15deg); }
-.reset-btn.hidden { display: none; }
+.reset-btn:hover { background: rgba(239, 68, 68, 0.3); }
+.reset-btn.hidden { display: none; animation: none; }
+.reset-btn.fading-out { animation: fadeOutLeft 0.3s ease forwards; }
+
+@keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; width: 0; flex: 0 0 0; margin-right: 0; }
+    to { transform: translateX(0); opacity: 1; width: 50px; flex: 0 0 50px; margin-right: 10px; }
+}
+
+@keyframes fadeOutLeft {
+    from { transform: translateX(0); opacity: 1; width: 50px; flex: 0 0 50px; margin-right: 10px; }
+    to { transform: translateX(-20px); opacity: 0; width: 0; flex: 0 0 0; margin-right: 0; }
+}
 
 /* UPLOAD ZONE */
 .upload-zone {
@@ -396,7 +414,6 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
 
 .player-progress-container { width: 100%; display: flex; align-items: center; gap: 15px; }
 .time-text { font-size: 12px; color: var(--text-secondary); width: 40px; text-align: center; }
-/* Player Slider (Standard) */
 input[type=range]:not(.inactive-slider) { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; --seek-before-width: 0%; }
 input[type=range]:not(.inactive-slider):focus { outline: none; }
 input[type=range]:not(.inactive-slider)::-webkit-slider-runnable-track { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) var(--seek-before-width), rgba(255, 255, 255, 0.15) var(--seek-before-width), rgba(255, 255, 255, 0.15) 100%); }

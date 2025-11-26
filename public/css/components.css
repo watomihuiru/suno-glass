@@ -133,27 +133,32 @@ textarea {
 }
 
 #m_v3_5:checked~.glider,
-#cm_v3_5:checked~.glider {
+#cm_v3_5:checked~.glider,
+#em_v3_5:checked~.glider {
     transform: translateX(0%);
 }
 
 #m_v4:checked~.glider,
-#cm_v4:checked~.glider {
+#cm_v4:checked~.glider,
+#em_v4:checked~.glider {
     transform: translateX(100%);
 }
 
 #m_v4_5:checked~.glider,
-#cm_v4_5:checked~.glider {
+#cm_v4_5:checked~.glider,
+#em_v4_5:checked~.glider {
     transform: translateX(200%);
 }
 
 #m_v4_5_plus:checked~.glider,
-#cm_v4_5_plus:checked~.glider {
+#cm_v4_5_plus:checked~.glider,
+#em_v4_5_plus:checked~.glider {
     transform: translateX(300%);
 }
 
 #m_v5:checked~.glider,
-#cm_v5:checked~.glider {
+#cm_v5:checked~.glider,
+#em_v5:checked~.glider {
     transform: translateX(400%);
 }
 

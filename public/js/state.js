@@ -13,7 +13,7 @@ const MODEL_LIMITS = {
     'V3_5': { prompt: 3000, style: 200 },
     'V4': { prompt: 3000, style: 200 },
     'V4_5': { prompt: 5000, style: 1000 },
-    'V4_5_PLUS': { prompt: 5000, style: 1000 },
+    'V4_5PLUS': { prompt: 5000, style: 1000 },
     'V5': { prompt: 5000, style: 1000 }
 };
 

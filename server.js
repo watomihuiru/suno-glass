@@ -29,6 +29,12 @@ io.on('connection', (socket) => {
         handleApiRequest(socket, `${process.env.SUNO_BASE_URL}/generate/upload-cover`, payload);
     });
 
+    // 3. Продление аудио
+    socket.on('generate_extend', async (payload) => {
+        console.log(`[API] Extend Request (${payload.model})`);
+        handleApiRequest(socket, `${process.env.SUNO_BASE_URL}/generate/upload-extend`, payload);
+    });
+
     socket.on('disconnect', () => {
         console.log('Client disconnected');
     });

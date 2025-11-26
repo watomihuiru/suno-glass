@@ -180,3 +180,137 @@ if (coverForm) {
         socket.emit('generate_cover', payload);
     });
 }
+
+// --- EXTEND / UPLOAD LOGIC ---
+const extendUploadZone = document.getElementById('extendUploadZone');
+const extendFileInput = document.getElementById('extendFileInput');
+const extendUploadContent = document.getElementById('extendUploadContent');
+const extendFilePreview = document.getElementById('extendFilePreview');
+const extendRemoveFileBtn = document.getElementById('extendRemoveFileBtn');
+const extendTrackPreview = document.getElementById('extendTrackPreview');
+const extendRemoveTrackBtn = document.getElementById('extendRemoveTrackBtn');
+const extendAudioUrlInput = document.getElementById('extendAudioUrl');
+let extendFile = null;
+
+if (extendUploadZone) {
+    extendUploadZone.addEventListener('click', () => {
+        if (!extendAudioUrlInput.value) extendFileInput.click();
+    });
+    extendUploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        extendUploadZone.classList.add('dragover');
+    });
+    extendUploadZone.addEventListener('dragleave', () => extendUploadZone.classList.remove('dragover'));
+    extendUploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        extendUploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleExtendFile(e.dataTransfer.files[0]);
+    });
+}
+
+if (extendFileInput) {
+    extendFileInput.addEventListener('change', () => {
+        if (extendFileInput.files.length) handleExtendFile(extendFileInput.files[0]);
+    });
+}
+
+if (extendRemoveFileBtn) {
+    extendRemoveFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetExtendFile();
+    });
+}
+
+if (extendRemoveTrackBtn) {
+    extendRemoveTrackBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        extendAudioUrlInput.value = '';
+        extendTrackPreview.classList.add('hidden');
+        extendUploadContent.classList.remove('hidden');
+    });
+}
+
+function handleExtendFile(file) {
+    if (file.size > 10 * 1024 * 1024) return;
+    if (!file.type.startsWith('audio/')) return;
+
+    extendAudioUrlInput.value = '';
+    extendTrackPreview.classList.add('hidden');
+    extendFile = file;
+    extendUploadContent.classList.add('hidden');
+    extendFilePreview.classList.remove('hidden');
+    extendFilePreview.querySelector('.file-name').innerText = file.name;
+    extendFilePreview.querySelector('.file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function resetExtendFile() {
+    extendFile = null;
+    extendFileInput.value = '';
+    extendUploadContent.classList.remove('hidden');
+    extendFilePreview.classList.add('hidden');
+}
+
+// --- EXTEND FORM SUBMIT ---
+const extendForm = document.getElementById('extendForm');
+if (extendForm) {
+    extendForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(extendForm);
+        const hasUrl = !!extendAudioUrlInput.value;
+
+        if (!hasUrl) return;
+
+        const modelVal = formData.get('extendModel');
+        if (!modelVal) return;
+
+        const promptVal = document.getElementById('extendPrompt').value;
+        const titleVal = document.getElementById('extendTitle').value || "Extended Track";
+        const styleVal = document.getElementById('extendStyle').value || "Original Style";
+        const continueAtVal = document.getElementById('continueAt').value;
+        const isCustom = document.getElementById('extendCustomMode').checked;
+        const isInstrumental = document.getElementById('extendInstrumental').checked;
+
+        const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
+        pendingTempTracks.push(...tempIds);
+
+        const payload = {
+            uploadUrl: extendAudioUrlInput.value,
+            defaultParamFlag: isCustom,
+            instrumental: isInstrumental,
+            model: modelVal,
+            callBackUrl: "https://example.com/callback",
+        };
+
+        if (isCustom) {
+            payload.style = styleVal;
+            payload.title = titleVal;
+            if (continueAtVal) {
+                payload.continueAt = parseFloat(continueAtVal);
+            } else {
+                // Если continueAt не указан, используем 0 как дефолт
+                payload.continueAt = 0;
+            }
+            if (!isInstrumental && promptVal) payload.prompt = promptVal;
+        }
+
+        const negTags = document.getElementById('extendNegativeTags').value;
+        if (negTags) payload.negativeTags = negTags;
+
+        const sw = document.getElementById('extendStyleWeight');
+        if (sw && sw.dataset.touched === "true") payload.styleWeight = parseFloat(sw.value);
+
+        const aw = document.getElementById('extendAudioWeight');
+        if (aw && aw.dataset.touched === "true") payload.audioWeight = parseFloat(aw.value);
+
+        const wd = document.getElementById('extendWeirdness');
+        if (wd && wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
+
+        if (isCustom && !isInstrumental) {
+            const gender = document.getElementById('extendVocalGender').value;
+            if (gender) payload.vocalGender = gender;
+        }
+
+        socket.emit('generate_extend', payload);
+    });
+}

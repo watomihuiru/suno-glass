@@ -63,12 +63,15 @@ function setupAdvancedToggle(toggleId, contentId) {
 }
 setupAdvancedToggle('genAdvancedToggle', 'genAdvancedContent');
 setupAdvancedToggle('coverAdvancedToggle', 'coverAdvancedContent');
+setupAdvancedToggle('extendAdvancedToggle', 'extendAdvancedContent');
 
 // --- COUNTERS & LIMITS ---
 const genPrompt = document.getElementById('prompt'), genStyle = document.getElementById('style'), genTitle = document.getElementById('title');
 const genPromptCnt = document.getElementById('promptCounter'), genStyleCnt = document.getElementById('styleCounter'), genTitleCnt = document.getElementById('titleCounter');
 const covPrompt = document.getElementById('coverPrompt'), covStyle = document.getElementById('coverStyle'), covTitle = document.getElementById('coverTitle');
 const covPromptCnt = document.getElementById('coverPromptCounter'), covStyleCnt = document.getElementById('coverStyleCounter'), covTitleCnt = document.getElementById('coverTitleCounter');
+const extPrompt = document.getElementById('extendPrompt'), extStyle = document.getElementById('extendStyle'), extTitle = document.getElementById('extendTitle');
+const extPromptCnt = document.getElementById('extendPromptCounter'), extStyleCnt = document.getElementById('extendStyleCounter'), extTitleCnt = document.getElementById('extendTitleCounter');
 
 function updateCounter(input, counterElement) {
     if (!input || !counterElement) return;
@@ -81,6 +84,9 @@ if(genTitle) genTitle.addEventListener('input', () => updateCounter(genTitle, ge
 if(covPrompt) covPrompt.addEventListener('input', () => updateCounter(covPrompt, covPromptCnt));
 if(covStyle) covStyle.addEventListener('input', () => updateCounter(covStyle, covStyleCnt));
 if(covTitle) covTitle.addEventListener('input', () => updateCounter(covTitle, covTitleCnt));
+if(extPrompt) extPrompt.addEventListener('input', () => updateCounter(extPrompt, extPromptCnt));
+if(extStyle) extStyle.addEventListener('input', () => updateCounter(extStyle, extStyleCnt));
+if(extTitle) extTitle.addEventListener('input', () => updateCounter(extTitle, extTitleCnt));
 
 function updateInputLimits() {
     const genModelBtn = document.querySelector('input[name="model"]:checked');
@@ -97,8 +103,15 @@ function updateInputLimits() {
         if (covStyle) { covStyle.maxLength = limits.style; updateCounter(covStyle, covStyleCnt); }
         if (covTitle) { covTitle.maxLength = 80; updateCounter(covTitle, covTitleCnt); }
     }
+    const extModelBtn = document.querySelector('input[name="extendModel"]:checked');
+    if (extModelBtn) {
+        const limits = MODEL_LIMITS[extModelBtn.value] || MODEL_LIMITS['V3_5'];
+        if (extPrompt) { extPrompt.maxLength = limits.prompt; updateCounter(extPrompt, extPromptCnt); }
+        if (extStyle) { extStyle.maxLength = limits.style; updateCounter(extStyle, extStyleCnt); }
+        if (extTitle) { extTitle.maxLength = 100; updateCounter(extTitle, extTitleCnt); }
+    }
 }
-document.querySelectorAll('input[name="model"], input[name="coverModel"]').forEach(r => {
+document.querySelectorAll('input[name="model"], input[name="coverModel"], input[name="extendModel"]').forEach(r => {
     r.addEventListener('change', updateInputLimits);
 });
 
@@ -125,7 +138,7 @@ function setupAdvancedSliders(ids) {
         });
     });
 }
-setupAdvancedSliders(['genStyleWeight', 'genAudioWeight', 'genWeirdness', 'styleWeight', 'audioWeight', 'weirdness']);
+setupAdvancedSliders(['genStyleWeight', 'genAudioWeight', 'genWeirdness', 'styleWeight', 'audioWeight', 'weirdness', 'extendStyleWeight', 'extendAudioWeight', 'extendWeirdness']);
 
 // --- RESET BUTTON LOGIC ---
 function checkAdvancedState() {
@@ -138,6 +151,11 @@ function checkAdvancedState() {
     if (covResetBtn) {
         const covDirty = isDirty('coverNegativeTags', 'coverVocalGender', ['styleWeight', 'audioWeight', 'weirdness']);
         if (covDirty) covResetBtn.classList.add('visible'); else covResetBtn.classList.remove('visible');
+    }
+    const extResetBtn = document.getElementById('extendResetBtn');
+    if (extResetBtn) {
+        const extDirty = isDirty('extendNegativeTags', 'extendVocalGender', ['extendStyleWeight', 'extendAudioWeight', 'extendWeirdness']);
+        if (extDirty) extResetBtn.classList.add('visible'); else extResetBtn.classList.remove('visible');
     }
 }
 
@@ -167,8 +185,12 @@ function resetAdvanced(tagId, genderContainerId, genderInputId, sliderIds, btnId
 
 document.getElementById('genResetBtn').addEventListener('click', () => resetAdvanced('negativeTags', 'genGenderOptions', 'vocalGender', ['genStyleWeight', 'genAudioWeight', 'genWeirdness'], 'genResetBtn'));
 document.getElementById('coverResetBtn').addEventListener('click', () => resetAdvanced('coverNegativeTags', 'covGenderOptions', 'coverVocalGender', ['styleWeight', 'audioWeight', 'weirdness'], 'coverResetBtn'));
+const extResetBtn = document.getElementById('extendResetBtn');
+if (extResetBtn) extResetBtn.addEventListener('click', () => resetAdvanced('extendNegativeTags', 'extGenderOptions', 'extendVocalGender', ['extendStyleWeight', 'extendAudioWeight', 'extendWeirdness'], 'extendResetBtn'));
 document.getElementById('negativeTags').addEventListener('input', checkAdvancedState);
 document.getElementById('coverNegativeTags').addEventListener('input', checkAdvancedState);
+const extNegTags = document.getElementById('extendNegativeTags');
+if (extNegTags) extNegTags.addEventListener('input', checkAdvancedState);
 
 // --- GENDER TOGGLES ---
 function setupGenderToggle(groupId, hiddenInputId) {
@@ -191,6 +213,7 @@ function setupGenderToggle(groupId, hiddenInputId) {
 }
 setupGenderToggle('genGenderOptions', 'vocalGender');
 setupGenderToggle('covGenderOptions', 'coverVocalGender');
+setupGenderToggle('extGenderOptions', 'extendVocalGender');
 
 // --- FORM UI UPDATES ---
 const customModeToggle = document.getElementById('customMode');
@@ -232,3 +255,23 @@ function updateCoverUI() {
     }
 }
 coverCustomMode.addEventListener('change', updateCoverUI); coverInstrumental.addEventListener('change', updateCoverUI); updateCoverUI();
+
+const extendCustomMode = document.getElementById('extendCustomMode');
+const extendInstrumental = document.getElementById('extendInstrumental');
+const extendCustomFields = document.getElementById('extendCustomFields');
+const extendPromptContainer = document.getElementById('extendPromptContainer');
+const extendPromptLabel = document.getElementById('extendPromptLabel');
+const extendVocalGenderGroup = document.getElementById('extendVocalGenderGroup');
+
+function updateExtendUI() {
+    const isCustom = extendCustomMode.checked;
+    const isInst = extendInstrumental.checked;
+    if (isCustom) {
+        extendCustomFields.classList.remove('hidden');
+        if (isInst) { extendPromptContainer.classList.add('hidden'); if(extendVocalGenderGroup) extendVocalGenderGroup.classList.add('hidden'); } 
+        else { extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description"; if(extendVocalGenderGroup) extendVocalGenderGroup.classList.remove('hidden'); }
+    } else {
+        extendCustomFields.classList.add('hidden'); extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description";
+    }
+}
+if(extendCustomMode) { extendCustomMode.addEventListener('change', updateExtendUI); extendInstrumental.addEventListener('change', updateExtendUI); updateExtendUI(); updateInputLimits(); }

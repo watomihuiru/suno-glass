@@ -142,9 +142,141 @@
             <section id="extend" class="tab-content">
                 <div class="glass-panel content-card">
                     <h2>Extend Track</h2>
-                    <div class="skeleton-ui">
-                        <button class="generate-btn disabled">Feature Coming Soon</button>
-                    </div>
+                    <p class="subtitle">Extend audio while preserving the original style</p>
+                    
+                    <form id="extendForm">
+                        <input type="hidden" id="extendAudioUrl" value="">
+                        
+                        <div class="form-group">
+                            <label>Source Audio (Max 2 min)</label>
+                            <div class="upload-zone" id="extendUploadZone">
+                                <input type="file" id="extendFileInput" accept="audio/*" hidden>
+                                <div class="upload-content" id="extendUploadContent">
+                                    <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                                    <p>Click to upload</p>
+                                    <span class="upload-hint">Or select from Library</span>
+                                </div>
+                                <div class="file-preview hidden" id="extendFilePreview">
+                                    <i class="fa-solid fa-music file-icon"></i>
+                                    <div class="file-info">
+                                        <span class="file-name" id="extendFileNameDisplay">song.mp3</span>
+                                        <span class="file-size" id="extendFileSizeDisplay">File</span>
+                                    </div>
+                                    <button type="button" class="remove-file-btn" id="extendRemoveFileBtn"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <div class="track-preview hidden" id="extendTrackPreview">
+                                    <img src="" id="extendTrackPreviewImg" class="track-preview-img">
+                                    <div class="file-info">
+                                        <span class="file-name" id="extendTrackPreviewTitle">Track Title</span>
+                                        <span class="file-size">From Library</span>
+                                    </div>
+                                    <button type="button" class="remove-file-btn" id="extendRemoveTrackBtn"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="margin-bottom: 12px; display:block;">Model Version</label>
+                            <div class="model-selector">
+                                <input type="radio" name="extendModel" id="em_v3_5" value="V3_5"> 
+                                <label for="em_v3_5">v3.5</label>
+
+                                <input type="radio" name="extendModel" id="em_v4" value="V4"> 
+                                <label for="em_v4">v4</label>
+
+                                <input type="radio" name="extendModel" id="em_v4_5" value="V4_5"> 
+                                <label for="em_v4_5">v4.5</label>
+
+                                <input type="radio" name="extendModel" id="em_v4_5_plus" value="V4_5PLUS"> 
+                                <label for="em_v4_5_plus">v4.5+</label>
+
+                                <input type="radio" name="extendModel" id="em_v5" value="V5" checked> 
+                                <label for="em_v5">v5</label>
+
+                                <div class="glider"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid">
+                            <div class="toggle-group">
+                                <label>Instrumental</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="extendInstrumental">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="toggle-group">
+                                <label>Custom Mode</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="extendCustomMode">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="extendCustomFields" class="hidden">
+                            <div class="form-group input-wrapper">
+                                <label>Title</label>
+                                <input type="text" id="extendTitle" placeholder="Extended Track Title" maxlength="100">
+                                <span id="extendTitleCounter" class="char-counter">0 / 100</span>
+                            </div>
+                            <div class="form-group input-wrapper">
+                                <label>Style (Genre)</label>
+                                <input type="text" id="extendStyle" placeholder="Jazz, Classical, Electronic...">
+                                <span id="extendStyleCounter" class="char-counter">0 / 1000</span>
+                            </div>
+                            <div class="form-group input-wrapper">
+                                <label>Continue At (seconds)</label>
+                                <input type="number" id="continueAt" placeholder="60" min="0" step="0.1">
+                                <span class="char-counter" style="font-size: 11px; color: rgba(255,255,255,0.5);">Start extension from this point</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group input-wrapper" id="extendPromptContainer">
+                            <label id="extendPromptLabel">Extension Description</label>
+                            <textarea id="extendPrompt" placeholder="Extend the music with more relaxing notes..."></textarea>
+                            <span id="extendPromptCounter" class="char-counter">0 / 5000</span>
+                        </div>
+
+                        <div class="advanced-section">
+                            <div class="advanced-toggle" id="extendAdvancedToggle">
+                                <span>Advanced Settings</span><i class="fa-solid fa-chevron-down"></i>
+                            </div>
+                            <div class="advanced-content" id="extendAdvancedContent">
+                                <div class="form-group gender-group" id="extendVocalGenderGroup" style="margin-top: 15px;">
+                                    <label>Vocal Gender</label>
+                                    <div class="gender-options" id="extGenderOptions">
+                                        <span class="gender-option" data-value="m">Male</span>
+                                        <span class="gender-option" data-value="f">Female</span>
+                                    </div>
+                                    <input type="hidden" id="extendVocalGender" value="">
+                                </div>
+                                <div class="form-group">
+                                    <label>Negative Tags</label>
+                                    <input type="text" id="extendNegativeTags" placeholder="e.g. Drums, Guitar">
+                                </div>
+                                <div class="sliders-grid">
+                                    <div class="slider-control">
+                                        <label>Style Weight</label>
+                                        <input type="range" id="extendStyleWeight" class="inactive-slider" min="0" max="1" step="0.01" value="0.65" data-touched="false">
+                                    </div>
+                                    <div class="slider-control">
+                                        <label>Audio Weight</label>
+                                        <input type="range" id="extendAudioWeight" class="inactive-slider" min="0" max="1" step="0.01" value="0.65" data-touched="false">
+                                    </div>
+                                    <div class="slider-control">
+                                        <label>Weirdness</label>
+                                        <input type="range" id="extendWeirdness" class="inactive-slider" min="0" max="1" step="0.01" value="0.65" data-touched="false">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="submit-row">
+                            <button type="button" id="extendResetBtn" class="reset-btn"><i class="fa-solid fa-trash"></i></button>
+                            <button type="submit" class="generate-btn"><i class="fa-solid fa-arrows-left-right-to-line"></i> Extend Music</button>
+                        </div>
+                    </form>
                 </div>
             </section>
 
@@ -198,7 +330,7 @@
                                 <input type="radio" name="coverModel" id="cm_v4_5" value="V4_5"> 
                                 <label for="cm_v4_5">v4.5</label>
 
-                                <input type="radio" name="coverModel" id="cm_v4_5_plus" value="V4_5_PLUS"> 
+                                <input type="radio" name="coverModel" id="cm_v4_5_plus" value="V4_5PLUS"> 
                                 <label for="cm_v4_5_plus">v4.5+</label>
 
                                 <input type="radio" name="coverModel" id="cm_v5" value="V5" checked> 

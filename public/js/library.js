@@ -25,6 +25,7 @@ function renderLibrary() {
                 <div class="dropdown-menu" id="menu-${track.id}">
                     <div class="dropdown-item" onclick="openLyrics('${track.id}')"><i class="fa-solid fa-align-left"></i> Lyrics</div>
                     <div class="dropdown-item" onclick="prepareCover('${track.id}')"><i class="fa-solid fa-record-vinyl"></i> Create Cover</div>
+                    <div class="dropdown-item" onclick="prepareExtend('${track.id}')"><i class="fa-solid fa-arrows-left-right-to-line"></i> Extend</div>
                     <div class="dropdown-item" onclick="downloadTrack('${track.id}')"><i class="fa-solid fa-download"></i> Download</div>
                     <div class="dropdown-item delete" onclick="deleteTrack('${track.id}')"><i class="fa-solid fa-trash"></i> Delete</div>
                 </div>
@@ -56,6 +57,18 @@ window.prepareCover = function(id) {
     document.getElementById('trackPreview').classList.remove('hidden');
     document.getElementById('trackPreviewImg').src = track.imageUrl;
     document.getElementById('trackPreviewTitle').innerText = track.title;
+};
+window.prepareExtend = function(id) {
+    const track = library.find(t => t.id === id); if (!track || !track.audioUrl) { alert("Audio URL is missing."); return; }
+    document.querySelector('[data-tab="extend"]').click();
+    resetExtendFile();
+    const extendAudioUrlInput = document.getElementById('extendAudioUrl');
+    extendAudioUrlInput.value = track.audioUrl;
+    document.getElementById('extendUploadContent').classList.add('hidden');
+    document.getElementById('extendFilePreview').classList.add('hidden');
+    document.getElementById('extendTrackPreview').classList.remove('hidden');
+    document.getElementById('extendTrackPreviewImg').src = track.imageUrl;
+    document.getElementById('extendTrackPreviewTitle').innerText = track.title;
 };
 window.downloadTrack = function(id) {
     const track = library.find(t => t.id === id); if (!track || !track.audioUrl) return;

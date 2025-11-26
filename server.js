@@ -18,14 +18,14 @@ io.on('connection', (socket) => {
 
     // 1. Генерация с нуля
     socket.on('generate_music', async (payload) => {
+        // Лог в консоль сервера (минимальный)
+        console.log(`[API] Generate Request (${payload.model})`);
         handleApiRequest(socket, `${process.env.SUNO_BASE_URL}/generate`, payload);
     });
 
-    // 2. Генерация Кавера (НОВОЕ)
+    // 2. Генерация Кавера
     socket.on('generate_cover', async (payload) => {
-        // В реальном проекте здесь сначала нужно загрузить файл на сервер Suno (другой эндпоинт),
-        // получить URL и вставить его в payload.uploadUrl.
-        // Так как у нас нет документации на Upload File, мы отправляем запрос как есть.
+        console.log(`[API] Cover Request (${payload.model})`);
         handleApiRequest(socket, `${process.env.SUNO_BASE_URL}/generate/upload-cover`, payload);
     });
 
@@ -34,9 +34,10 @@ io.on('connection', (socket) => {
     });
 });
 
-// Универсальная функция для запросов
+// Универсальная функция для создания задачи
 async function handleApiRequest(socket, url, payload) {
     try {
+        // Лог запроса в UI
         socket.emit('api_log', { type: 'request', data: payload });
 
         const response = await fetch(url, {
@@ -49,20 +50,27 @@ async function handleApiRequest(socket, url, payload) {
         });
         const result = await response.json();
 
+        // Лог ответа в UI
         socket.emit('api_log', { type: 'response', data: result });
 
         if (result.code === 200) {
             const taskId = result.data.taskId;
+            // Сообщаем клиенту taskId для привязки
             socket.emit('task_created', { taskId });
+            // Запускаем опрос
             startPolling(socket, taskId);
         } else {
+            // Ошибка при создании (например 402)
             socket.emit('error_message', result.msg || 'API Error');
+            // Говорим клиенту удалить фейковые карточки
+            socket.emit('task_failed_creation', { msg: result.msg || 'Unknown API Error' });
         }
 
     } catch (error) {
         console.error(error);
         socket.emit('api_log', { type: 'response', data: { error: error.message } });
         socket.emit('error_message', 'Network Error');
+        socket.emit('task_failed_creation', { msg: 'Network Error: ' + error.message });
     }
 }
 
@@ -75,23 +83,55 @@ function startPolling(socket, taskId) {
             });
             const data = await response.json();
 
-            socket.emit('api_log', { type: 'poll', data: data });
-
             if (data.code === 200) {
                 const status = data.data.status;
-                const tracks = data.data.response ? data.data.response.sunoData : [];
+                const errorMessage = data.data.errorMessage; 
+                const errorCode = data.data.errorCode;
+                const tracks = (data.data.response && data.data.response.sunoData) ? data.data.response.sunoData : [];
 
-                socket.emit('task_update', { taskId, status, tracks });
+                // Список фатальных ошибок
+                const isFatalError = status.includes('FAILED') || 
+                                     status === 'SENSITIVE_WORD_ERROR' || 
+                                     status === 'CALLBACK_EXCEPTION';
 
-                if (status === 'SUCCESS' || status.includes('FAILED')) {
+                if (isFatalError) {
+                    // 1. Отправляем КРАСИВЫЙ лог ошибки в UI
+                    socket.emit('api_log', { 
+                        type: 'error', 
+                        code: errorCode || 500, 
+                        msg: errorMessage || status 
+                    });
+
+                    // 2. Уведомляем Main.js чтобы остановить UI и удалить карточки
+                    socket.emit('task_update', { taskId, status, tracks, errorMessage });
+                    
+                    // 3. ВАЖНО: Останавливаем опрос, чтобы не спамить
+                    clearInterval(interval);
+                    return; 
+                }
+
+                // Если все ок, шлем обычный лог
+                socket.emit('api_log', { type: 'poll', data: data });
+
+                // Обновляем прогресс на клиенте
+                socket.emit('task_update', { taskId, status, tracks, errorMessage });
+
+                // Если успех — останавливаем опрос
+                if (status === 'SUCCESS') {
                     clearInterval(interval);
                 }
+
+            } else {
+                // Если сам API вернул код отличный от 200 (серверная ошибка)
+                socket.emit('api_log', { type: 'error', code: data.code, msg: data.msg || "Polling Http Error" });
+                clearInterval(interval);
             }
         } catch (error) {
             console.error("Polling Error:", error);
-            socket.emit('api_log', { type: 'poll', data: { error: error.message } });
+            socket.emit('api_log', { type: 'error', code: 500, msg: error.message });
+            clearInterval(interval);
         }
-    }, 3000);
+    }, 3000); // Опрос каждые 3 секунды
 }
 
 server.listen(PORT, () => {

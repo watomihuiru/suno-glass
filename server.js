@@ -131,7 +131,7 @@ function startPolling(socket, taskId) {
             socket.emit('api_log', { type: 'error', code: 500, msg: error.message });
             clearInterval(interval);
         }
-    }, 3000); // Опрос каждые 3 секунды
+    }, 8000); // Опрос каждые 8 секунд
 }
 
 server.listen(PORT, () => {

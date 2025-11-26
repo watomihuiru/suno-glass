@@ -172,7 +172,12 @@
                                 </div>
                                 <div class="track-preview hidden" id="extendTrackPreview">
                                     <div class="extend-track-header">
-                                        <img src="" id="extendTrackPreviewImg" class="extend-track-cover" onclick="playExtendTrack()">
+                                        <div class="extend-cover-container">
+                                            <img src="" id="extendTrackPreviewImg" class="extend-track-cover">
+                                            <button type="button" class="extend-play-btn" id="extendPlayBtn" onclick="playExtendTrack()">
+                                                <i class="fa-solid fa-play" id="extendPlayIcon"></i>
+                                            </button>
+                                        </div>
                                         <div class="extend-track-info">
                                             <span class="file-name" id="extendTrackPreviewTitle">Track Title</span>
                                             <span class="file-size">From Library</span>

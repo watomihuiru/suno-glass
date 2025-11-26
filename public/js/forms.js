@@ -233,6 +233,11 @@ if (extendRemoveTrackBtn) {
             extendAudioPlayer.pause();
             extendAudioPlayer.src = '';
         }
+        extendSelectionPercent = 0;
+        waveformData = null;
+        isDraggingExtend = false;
+        isDraggingHandle = false;
+        updatePlayButton(false);
         extendTrackPreview.classList.add('hidden');
         extendUploadContent.classList.remove('hidden');
     });
@@ -271,6 +276,8 @@ let extendWaveformCanvas = null;
 let extendWaveformCtx = null;
 let extendSelectionPercent = 0;
 let isDraggingExtend = false;
+let isDraggingHandle = false;
+let waveformData = null;
 
 function initExtendAudio(audioUrl) {
     extendAudioPlayer = document.getElementById('extendAudioPlayer');
@@ -279,36 +286,46 @@ function initExtendAudio(audioUrl) {
     
     extendWaveformCtx = extendWaveformCanvas.getContext('2d');
     extendAudioPlayer.src = audioUrl;
+    extendSelectionPercent = 0;
+    isDraggingExtend = false;
+    isDraggingHandle = false;
+    updatePlayButton(false);
+    
+    // Clear previous event listeners by cloning
+    const newPlayer = extendAudioPlayer.cloneNode(true);
+    extendAudioPlayer.parentNode.replaceChild(newPlayer, extendAudioPlayer);
+    extendAudioPlayer = newPlayer;
     
     extendAudioPlayer.addEventListener('loadedmetadata', () => {
         drawWaveform();
         updateExtendTime(0);
+        updateProgress();
     });
     
     extendAudioPlayer.addEventListener('timeupdate', () => {
-        if (!isDraggingExtend) {
-            const percent = (extendAudioPlayer.currentTime / extendAudioPlayer.duration) * 100;
-            if (percent <= extendSelectionPercent) {
-                updateSelectionHandle(percent);
-            }
+        if (!isDraggingExtend && !isDraggingHandle) {
+            updateProgress();
         }
     });
     
-    // Waveform interaction
+    extendAudioPlayer.addEventListener('play', () => {
+        updatePlayButton(true);
+    });
+    
+    extendAudioPlayer.addEventListener('pause', () => {
+        updatePlayButton(false);
+    });
+    
+    // Waveform click - seek to position
     extendWaveformCanvas.addEventListener('click', (e) => {
+        if (isDraggingHandle) return;
         const rect = extendWaveformCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const percent = (x / rect.width) * 100;
-        updateSelectionHandle(Math.max(0, Math.min(100, percent)));
+        seekToPosition(percent);
     });
     
-    // Drag handle
-    const handle = document.getElementById('extendSelectionHandle');
-    if (handle) {
-        handle.addEventListener('mousedown', startDrag);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', stopDrag);
-    }
+    // Drag handle - change extend point (handled globally)
 }
 
 async function drawWaveform() {
@@ -319,6 +336,9 @@ async function drawWaveform() {
     extendWaveformCanvas.width = width;
     extendWaveformCanvas.height = height;
     
+    // Clear canvas first
+    extendWaveformCtx.clearRect(0, 0, width, height);
+    
     try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const response = await fetch(extendAudioPlayer.src);
@@ -328,69 +348,56 @@ async function drawWaveform() {
         const channelData = audioBuffer.getChannelData(0);
         const samples = 200;
         const blockSize = Math.floor(channelData.length / samples);
-        const data = [];
+        waveformData = [];
         
         for (let i = 0; i < samples; i++) {
             let sum = 0;
             for (let j = 0; j < blockSize; j++) {
                 sum += Math.abs(channelData[i * blockSize + j]);
             }
-            data.push(sum / blockSize);
+            waveformData.push(sum / blockSize);
         }
         
-        const max = Math.max(...data);
+        const max = Math.max(...waveformData);
         const barWidth = width / samples;
         const barGap = 1;
-        const selectedBars = Math.floor((extendSelectionPercent / 100) * samples);
         
-        // Draw unselected part (gray)
+        // Draw all bars in gray
         extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        for (let i = selectedBars; i < samples; i++) {
-            const barHeight = (data[i] / max) * height * 0.8;
+        for (let i = 0; i < samples; i++) {
+            const barHeight = (waveformData[i] / max) * height * 0.8;
             const x = i * barWidth;
             const y = height - barHeight;
             extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
         }
         
-        // Draw selected part (pink)
-        extendWaveformCtx.fillStyle = '#ec4899';
-        for (let i = 0; i < selectedBars; i++) {
-            const barHeight = (data[i] / max) * height * 0.8;
-            const x = i * barWidth;
-            const y = height - barHeight;
-            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
-        }
-        
-        // Update selection handle position (without redrawing)
-        const handle = document.getElementById('extendSelectionHandle');
-        const overlay = document.getElementById('extendSelectionOverlay');
-        if (handle && overlay && extendAudioPlayer) {
-            const containerWidth = extendWaveformCanvas.offsetWidth;
-            const handlePosition = (extendSelectionPercent / 100) * containerWidth;
-            handle.style.left = handlePosition + 'px';
-            overlay.style.width = handlePosition + 'px';
-        }
+    // Update selection handle position
+    const handle = document.getElementById('extendSelectionHandle');
+    const overlay = document.getElementById('extendSelectionOverlay');
+    if (handle && overlay && extendAudioPlayer) {
+        const containerWidth = extendWaveformCanvas.offsetWidth;
+        const handlePosition = (extendSelectionPercent / 100) * containerWidth;
+        handle.style.transform = `translateX(${handlePosition}px)`;
+        handle.style.left = '0';
+        overlay.style.width = handlePosition + 'px';
+    }
+    
+    // Redraw waveform with selection
+    if (extendWaveformCanvas && extendWaveformCtx && waveformData) {
+        redrawWaveformWithSelection();
+    }
     } catch (error) {
         console.error('Error drawing waveform:', error);
         // Fallback to simple visualization
         const bars = 100;
         const barWidth = width / bars;
         const barGap = 2;
-        const selectedBars = Math.floor((extendSelectionPercent / 100) * bars);
+        waveformData = [];
         
-        // Draw unselected part (gray)
         extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        for (let i = selectedBars; i < bars; i++) {
+        for (let i = 0; i < bars; i++) {
             const barHeight = Math.random() * 0.6 + 0.2;
-            const x = i * barWidth;
-            const y = height - (barHeight * height);
-            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight * height);
-        }
-        
-        // Draw selected part (pink)
-        extendWaveformCtx.fillStyle = '#ec4899';
-        for (let i = 0; i < selectedBars; i++) {
-            const barHeight = Math.random() * 0.6 + 0.2;
+            waveformData.push(barHeight);
             const x = i * barWidth;
             const y = height - (barHeight * height);
             extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight * height);
@@ -410,7 +417,8 @@ function updateSelectionHandle(percent) {
     const containerWidth = container.offsetWidth;
     const handlePosition = (extendSelectionPercent / 100) * containerWidth;
     
-    handle.style.left = handlePosition + 'px';
+    handle.style.transform = `translateX(${handlePosition}px)`;
+    handle.style.left = '0';
     overlay.style.width = handlePosition + 'px';
     
     // Update time display and continueAt field
@@ -421,6 +429,119 @@ function updateSelectionHandle(percent) {
     if (continueAtInput) {
         continueAtInput.value = time.toFixed(1);
     }
+    
+    // Redraw waveform to show selection (only when not dragging to avoid ghosting)
+    if (extendWaveformCanvas && extendWaveformCtx && waveformData && !isDraggingExtend) {
+        redrawWaveformWithSelection();
+    }
+}
+
+function redrawWaveformWithSelection() {
+    if (!extendWaveformCanvas || !extendWaveformCtx || !waveformData) return;
+    
+    const width = extendWaveformCanvas.width;
+    const height = extendWaveformCanvas.height;
+    const samples = waveformData.length;
+    const barWidth = width / samples;
+    const barGap = 1;
+    
+    const progressPercent = (extendAudioPlayer && extendAudioPlayer.duration) ? (extendAudioPlayer.currentTime / extendAudioPlayer.duration) * 100 : 0;
+    const playedBars = Math.floor((progressPercent / 100) * samples);
+    const selectedBars = Math.floor((extendSelectionPercent / 100) * samples);
+    
+    // Clear canvas
+    extendWaveformCtx.clearRect(0, 0, width, height);
+    
+    const max = Math.max(...waveformData);
+    
+    // Draw unplayed and unselected part (gray)
+    extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    const endBar = Math.max(playedBars, selectedBars);
+    for (let i = endBar; i < samples; i++) {
+        const barHeight = (waveformData[i] / max) * height * 0.8;
+        const x = i * barWidth;
+        const y = height - barHeight;
+        extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+    }
+    
+    // Draw played part (accent color) - only in visualization
+    extendWaveformCtx.fillStyle = '#6366f1';
+    for (let i = 0; i < playedBars; i++) {
+        const barHeight = (waveformData[i] / max) * height * 0.8;
+        const x = i * barWidth;
+        const y = height - barHeight;
+        extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+    }
+    
+    // Draw selected but not played part (lighter accent) - only in visualization
+    if (selectedBars > playedBars) {
+        extendWaveformCtx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+        for (let i = playedBars; i < selectedBars; i++) {
+            const barHeight = (waveformData[i] / max) * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+        }
+    }
+}
+
+function updateProgress() {
+    if (!extendAudioPlayer || !extendAudioPlayer.duration) return;
+    
+    const progressPercent = (extendAudioPlayer.currentTime / extendAudioPlayer.duration) * 100;
+    
+    // Only redraw waveform visualization, no overlay
+    if (extendWaveformCanvas && extendWaveformCtx && waveformData) {
+        const width = extendWaveformCanvas.width;
+        const height = extendWaveformCanvas.height;
+        const samples = waveformData.length;
+        const barWidth = width / samples;
+        const barGap = 1;
+        const playedBars = Math.floor((progressPercent / 100) * samples);
+        const selectedBars = Math.floor((extendSelectionPercent / 100) * samples);
+        
+        // Clear canvas
+        extendWaveformCtx.clearRect(0, 0, width, height);
+        
+        const max = Math.max(...waveformData);
+        
+        // Draw unplayed and unselected part (gray)
+        extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        const endBar = Math.max(playedBars, selectedBars);
+        for (let i = endBar; i < samples; i++) {
+            const barHeight = (waveformData[i] / max) * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+        }
+        
+        // Draw played part (accent color) - only in visualization
+        extendWaveformCtx.fillStyle = '#6366f1';
+        for (let i = 0; i < playedBars; i++) {
+            const barHeight = (waveformData[i] / max) * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+        }
+        
+        // Draw selected but not played part (lighter accent) - only in visualization
+        if (selectedBars > playedBars) {
+            extendWaveformCtx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+            for (let i = playedBars; i < selectedBars; i++) {
+                const barHeight = (waveformData[i] / max) * height * 0.8;
+                const x = i * barWidth;
+                const y = height - barHeight;
+                extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+            }
+        }
+    }
+}
+
+function seekToPosition(percent) {
+    if (!extendAudioPlayer || !extendAudioPlayer.duration) return;
+    const time = (percent / 100) * extendAudioPlayer.duration;
+    extendAudioPlayer.currentTime = time;
+    updateProgress();
 }
 
 function updateExtendTime(seconds) {
@@ -430,24 +551,16 @@ function updateExtendTime(seconds) {
     }
 }
 
-function startDrag(e) {
-    isDraggingExtend = true;
-    e.preventDefault();
-}
-
-function drag(e) {
-    if (!isDraggingExtend) return;
-    const container = document.getElementById('extendWaveform');
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percent = (x / rect.width) * 100;
-    updateSelectionHandle(Math.max(0, Math.min(100, percent)));
-}
-
-function stopDrag() {
-    isDraggingExtend = false;
+function updatePlayButton(isPlaying) {
+    const playBtn = document.getElementById('extendPlayBtn');
+    const playIcon = document.getElementById('extendPlayIcon');
+    if (playBtn && playIcon) {
+        if (isPlaying) {
+            playIcon.className = 'fa-solid fa-pause';
+        } else {
+            playIcon.className = 'fa-solid fa-play';
+        }
+    }
 }
 
 window.playExtendTrack = function() {
@@ -458,6 +571,81 @@ window.playExtendTrack = function() {
         extendAudioPlayer.pause();
     }
 };
+
+// Global drag handlers for extend handle - optimized for instant response
+let extendContainer = null;
+let extendHandle = null;
+let extendOverlay = null;
+let extendTimeLabel = null;
+let extendContinueAtInput = null;
+
+function cacheExtendElements() {
+    extendContainer = document.getElementById('extendWaveform');
+    extendHandle = document.getElementById('extendSelectionHandle');
+    extendOverlay = document.getElementById('extendSelectionOverlay');
+    extendTimeLabel = document.getElementById('extendTimeValue');
+    extendContinueAtInput = document.getElementById('continueAt');
+}
+
+document.addEventListener('mousedown', (e) => {
+    const handle = document.getElementById('extendSelectionHandle');
+    if (handle && (e.target === handle || handle.contains(e.target))) {
+        e.stopPropagation();
+        e.preventDefault();
+        isDraggingHandle = true;
+        isDraggingExtend = true;
+        cacheExtendElements();
+    }
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (isDraggingExtend && isDraggingHandle && extendContainer) {
+        // Immediate update without any delays - use transform for better performance
+        const rect = extendContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const containerWidth = rect.width;
+        const percent = Math.max(0, Math.min(100, (x / containerWidth) * 100));
+        const handlePosition = (percent / 100) * containerWidth;
+        
+        // Update position instantly using transform for smoother movement
+        if (extendHandle) {
+            extendHandle.style.transform = `translateX(${handlePosition}px)`;
+            extendHandle.style.left = '0';
+        }
+        if (extendOverlay) {
+            extendOverlay.style.width = handlePosition + 'px';
+        }
+        
+        // Update time display
+        if (extendAudioPlayer && extendAudioPlayer.duration) {
+            const time = (percent / 100) * extendAudioPlayer.duration;
+            if (extendTimeLabel) {
+                extendTimeLabel.textContent = formatTime(time);
+            }
+            if (extendContinueAtInput) {
+                extendContinueAtInput.value = time.toFixed(1);
+            }
+        }
+        
+        extendSelectionPercent = percent;
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    isDraggingExtend = false;
+    isDraggingHandle = false;
+    
+    // Redraw waveform after drag ends to avoid ghosting
+    if (extendWaveformCanvas && extendWaveformCtx && waveformData) {
+        redrawWaveformWithSelection();
+    }
+    
+    extendContainer = null;
+    extendHandle = null;
+    extendOverlay = null;
+    extendTimeLabel = null;
+    extendContinueAtInput = null;
+});
 
 // --- EXTEND FORM SUBMIT ---
 const extendForm = document.getElementById('extendForm');

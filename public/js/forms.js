@@ -15,8 +15,10 @@ if (generateForm) {
         const titleVal = document.getElementById('title').value || "Generated Track";
         const styleVal = document.getElementById('style').value || "AI Style";
         
-        const isCustom = document.getElementById('customMode').checked;
-        const isInstrumental = document.getElementById('instrumental').checked;
+        const customModeChecked = document.querySelector('input[name="customMode"]:checked');
+        const instrumentalChecked = document.querySelector('input[name="instrumental"]:checked');
+        const isCustom = customModeChecked && customModeChecked.value === 'true';
+        const isInstrumental = instrumentalChecked && instrumentalChecked.value === 'true';
 
         const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
         pendingTempTracks.push(...tempIds);
@@ -141,8 +143,10 @@ if (coverForm) {
         const promptVal = document.getElementById('coverPrompt').value;
         const titleVal = document.getElementById('coverTitle').value || "Cover Track";
         const styleVal = document.getElementById('coverStyle').value || "New Style";
-        const isCustom = document.getElementById('coverCustomMode').checked;
-        const isInstrumental = document.getElementById('coverInstrumental').checked;
+        const coverCustomModeChecked = document.querySelector('input[name="coverCustomMode"]:checked');
+        const coverInstrumentalChecked = document.querySelector('input[name="coverInstrumental"]:checked');
+        const isCustom = coverCustomModeChecked && coverCustomModeChecked.value === 'true';
+        const isInstrumental = coverInstrumentalChecked && coverInstrumentalChecked.value === 'true';
 
         const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
         pendingTempTracks.push(...tempIds);
@@ -225,6 +229,10 @@ if (extendRemoveTrackBtn) {
     extendRemoveTrackBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         extendAudioUrlInput.value = '';
+        if (extendAudioPlayer) {
+            extendAudioPlayer.pause();
+            extendAudioPlayer.src = '';
+        }
         extendTrackPreview.classList.add('hidden');
         extendUploadContent.classList.remove('hidden');
     });
@@ -248,7 +256,208 @@ function resetExtendFile() {
     extendFileInput.value = '';
     extendUploadContent.classList.remove('hidden');
     extendFilePreview.classList.add('hidden');
+    if (extendAudioPlayer) {
+        extendAudioPlayer.pause();
+        extendAudioPlayer.src = '';
+    }
+    if (extendTrackPreview) {
+        extendTrackPreview.classList.add('hidden');
+    }
 }
+
+// --- EXTEND AUDIO PLAYER & WAVEFORM ---
+let extendAudioPlayer = null;
+let extendWaveformCanvas = null;
+let extendWaveformCtx = null;
+let extendSelectionPercent = 0;
+let isDraggingExtend = false;
+
+function initExtendAudio(audioUrl) {
+    extendAudioPlayer = document.getElementById('extendAudioPlayer');
+    extendWaveformCanvas = document.getElementById('extendWaveform');
+    if (!extendAudioPlayer || !extendWaveformCanvas) return;
+    
+    extendWaveformCtx = extendWaveformCanvas.getContext('2d');
+    extendAudioPlayer.src = audioUrl;
+    
+    extendAudioPlayer.addEventListener('loadedmetadata', () => {
+        drawWaveform();
+        updateExtendTime(0);
+    });
+    
+    extendAudioPlayer.addEventListener('timeupdate', () => {
+        if (!isDraggingExtend) {
+            const percent = (extendAudioPlayer.currentTime / extendAudioPlayer.duration) * 100;
+            if (percent <= extendSelectionPercent) {
+                updateSelectionHandle(percent);
+            }
+        }
+    });
+    
+    // Waveform interaction
+    extendWaveformCanvas.addEventListener('click', (e) => {
+        const rect = extendWaveformCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percent = (x / rect.width) * 100;
+        updateSelectionHandle(Math.max(0, Math.min(100, percent)));
+    });
+    
+    // Drag handle
+    const handle = document.getElementById('extendSelectionHandle');
+    if (handle) {
+        handle.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', stopDrag);
+    }
+}
+
+async function drawWaveform() {
+    if (!extendAudioPlayer || !extendWaveformCanvas || !extendWaveformCtx) return;
+    
+    const width = extendWaveformCanvas.offsetWidth;
+    const height = extendWaveformCanvas.offsetHeight;
+    extendWaveformCanvas.width = width;
+    extendWaveformCanvas.height = height;
+    
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const response = await fetch(extendAudioPlayer.src);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        const channelData = audioBuffer.getChannelData(0);
+        const samples = 200;
+        const blockSize = Math.floor(channelData.length / samples);
+        const data = [];
+        
+        for (let i = 0; i < samples; i++) {
+            let sum = 0;
+            for (let j = 0; j < blockSize; j++) {
+                sum += Math.abs(channelData[i * blockSize + j]);
+            }
+            data.push(sum / blockSize);
+        }
+        
+        const max = Math.max(...data);
+        const barWidth = width / samples;
+        const barGap = 1;
+        const selectedBars = Math.floor((extendSelectionPercent / 100) * samples);
+        
+        // Draw unselected part (gray)
+        extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        for (let i = selectedBars; i < samples; i++) {
+            const barHeight = (data[i] / max) * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+        }
+        
+        // Draw selected part (pink)
+        extendWaveformCtx.fillStyle = '#ec4899';
+        for (let i = 0; i < selectedBars; i++) {
+            const barHeight = (data[i] / max) * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight);
+        }
+        
+        // Update selection handle position (without redrawing)
+        const handle = document.getElementById('extendSelectionHandle');
+        const overlay = document.getElementById('extendSelectionOverlay');
+        if (handle && overlay && extendAudioPlayer) {
+            const containerWidth = extendWaveformCanvas.offsetWidth;
+            const handlePosition = (extendSelectionPercent / 100) * containerWidth;
+            handle.style.left = handlePosition + 'px';
+            overlay.style.width = handlePosition + 'px';
+        }
+    } catch (error) {
+        console.error('Error drawing waveform:', error);
+        // Fallback to simple visualization
+        const bars = 100;
+        const barWidth = width / bars;
+        const barGap = 2;
+        const selectedBars = Math.floor((extendSelectionPercent / 100) * bars);
+        
+        // Draw unselected part (gray)
+        extendWaveformCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        for (let i = selectedBars; i < bars; i++) {
+            const barHeight = Math.random() * 0.6 + 0.2;
+            const x = i * barWidth;
+            const y = height - (barHeight * height);
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight * height);
+        }
+        
+        // Draw selected part (pink)
+        extendWaveformCtx.fillStyle = '#ec4899';
+        for (let i = 0; i < selectedBars; i++) {
+            const barHeight = Math.random() * 0.6 + 0.2;
+            const x = i * barWidth;
+            const y = height - (barHeight * height);
+            extendWaveformCtx.fillRect(x, y, barWidth - barGap, barHeight * height);
+        }
+        updateSelectionHandle(extendSelectionPercent);
+    }
+}
+
+function updateSelectionHandle(percent) {
+    extendSelectionPercent = Math.max(0, Math.min(100, percent));
+    const handle = document.getElementById('extendSelectionHandle');
+    const overlay = document.getElementById('extendSelectionOverlay');
+    const container = document.getElementById('extendWaveform');
+    
+    if (!handle || !overlay || !container || !extendAudioPlayer) return;
+    
+    const containerWidth = container.offsetWidth;
+    const handlePosition = (extendSelectionPercent / 100) * containerWidth;
+    
+    handle.style.left = handlePosition + 'px';
+    overlay.style.width = handlePosition + 'px';
+    
+    // Update time display and continueAt field
+    const time = (extendSelectionPercent / 100) * extendAudioPlayer.duration;
+    updateExtendTime(time);
+    
+    const continueAtInput = document.getElementById('continueAt');
+    if (continueAtInput) {
+        continueAtInput.value = time.toFixed(1);
+    }
+}
+
+function updateExtendTime(seconds) {
+    const timeLabel = document.getElementById('extendTimeValue');
+    if (timeLabel) {
+        timeLabel.textContent = formatTime(seconds);
+    }
+}
+
+function startDrag(e) {
+    isDraggingExtend = true;
+    e.preventDefault();
+}
+
+function drag(e) {
+    if (!isDraggingExtend) return;
+    const container = document.getElementById('extendWaveform');
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percent = (x / rect.width) * 100;
+    updateSelectionHandle(Math.max(0, Math.min(100, percent)));
+}
+
+function stopDrag() {
+    isDraggingExtend = false;
+}
+
+window.playExtendTrack = function() {
+    if (!extendAudioPlayer) return;
+    if (extendAudioPlayer.paused) {
+        extendAudioPlayer.play();
+    } else {
+        extendAudioPlayer.pause();
+    }
+};
 
 // --- EXTEND FORM SUBMIT ---
 const extendForm = document.getElementById('extendForm');
@@ -268,8 +477,10 @@ if (extendForm) {
         const titleVal = document.getElementById('extendTitle').value || "Extended Track";
         const styleVal = document.getElementById('extendStyle').value || "Original Style";
         const continueAtVal = document.getElementById('continueAt').value;
-        const isCustom = document.getElementById('extendCustomMode').checked;
-        const isInstrumental = document.getElementById('extendInstrumental').checked;
+        const extendCustomModeChecked = document.querySelector('input[name="extendCustomMode"]:checked');
+        const extendInstrumentalChecked = document.querySelector('input[name="extendInstrumental"]:checked');
+        const isCustom = extendCustomModeChecked && extendCustomModeChecked.value === 'true';
+        const isInstrumental = extendInstrumentalChecked && extendInstrumentalChecked.value === 'true';
 
         const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
         pendingTempTracks.push(...tempIds);

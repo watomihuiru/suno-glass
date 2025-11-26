@@ -69,6 +69,9 @@ window.prepareExtend = function(id) {
     document.getElementById('extendTrackPreview').classList.remove('hidden');
     document.getElementById('extendTrackPreviewImg').src = track.imageUrl;
     document.getElementById('extendTrackPreviewTitle').innerText = track.title;
+    
+    // Initialize extend audio player and waveform
+    initExtendAudio(track.audioUrl);
 };
 window.downloadTrack = function(id) {
     const track = library.find(t => t.id === id); if (!track || !track.audioUrl) return;

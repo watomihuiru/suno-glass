@@ -61,19 +61,25 @@
                         </div>
 
                         <div class="settings-grid">
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Instrumental</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="instrumental">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="instrumental" id="inst_off" value="false" checked>
+                                    <label for="inst_off">Off</label>
+                                    <input type="radio" name="instrumental" id="inst_on" value="true">
+                                    <label for="inst_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Custom Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="customMode">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="customMode" id="custom_off" value="false" checked>
+                                    <label for="custom_off">Off</label>
+                                    <input type="radio" name="customMode" id="custom_on" value="true">
+                                    <label for="custom_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -165,12 +171,23 @@
                                     <button type="button" class="remove-file-btn" id="extendRemoveFileBtn"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                                 <div class="track-preview hidden" id="extendTrackPreview">
-                                    <img src="" id="extendTrackPreviewImg" class="track-preview-img">
-                                    <div class="file-info">
-                                        <span class="file-name" id="extendTrackPreviewTitle">Track Title</span>
-                                        <span class="file-size">From Library</span>
+                                    <div class="extend-track-header">
+                                        <img src="" id="extendTrackPreviewImg" class="extend-track-cover" onclick="playExtendTrack()">
+                                        <div class="extend-track-info">
+                                            <span class="file-name" id="extendTrackPreviewTitle">Track Title</span>
+                                            <span class="file-size">From Library</span>
+                                        </div>
+                                        <button type="button" class="remove-file-btn" id="extendRemoveTrackBtn"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
-                                    <button type="button" class="remove-file-btn" id="extendRemoveTrackBtn"><i class="fa-solid fa-xmark"></i></button>
+                                    <div class="extend-waveform-container">
+                                        <canvas id="extendWaveform" class="extend-waveform"></canvas>
+                                        <div class="extend-selection-handle" id="extendSelectionHandle"></div>
+                                        <div class="extend-selection-overlay" id="extendSelectionOverlay"></div>
+                                    </div>
+                                    <div class="extend-time-info">
+                                        <span id="extendTimeLabel">Extend from <strong id="extendTimeValue">0:00</strong></span>
+                                    </div>
+                                    <audio id="extendAudioPlayer" preload="metadata"></audio>
                                 </div>
                             </div>
                         </div>
@@ -198,19 +215,25 @@
                         </div>
 
                         <div class="settings-grid">
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Instrumental</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="extendInstrumental">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="extendInstrumental" id="extend_inst_off" value="false" checked>
+                                    <label for="extend_inst_off">Off</label>
+                                    <input type="radio" name="extendInstrumental" id="extend_inst_on" value="true">
+                                    <label for="extend_inst_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Custom Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="extendCustomMode">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="extendCustomMode" id="extend_custom_off" value="false" checked>
+                                    <label for="extend_custom_off">Off</label>
+                                    <input type="radio" name="extendCustomMode" id="extend_custom_on" value="true">
+                                    <label for="extend_custom_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
                         </div>
 
@@ -341,19 +364,25 @@
                         </div>
 
                         <div class="settings-grid">
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Instrumental</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="coverInstrumental">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="coverInstrumental" id="cover_inst_off" value="false" checked>
+                                    <label for="cover_inst_off">Off</label>
+                                    <input type="radio" name="coverInstrumental" id="cover_inst_on" value="true">
+                                    <label for="cover_inst_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
-                            <div class="toggle-group">
+                            <div class="form-group">
                                 <label>Custom Mode</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="coverCustomMode">
-                                    <span class="slider round"></span>
-                                </label>
+                                <div class="toggle-selector">
+                                    <input type="radio" name="coverCustomMode" id="cover_custom_off" value="false" checked>
+                                    <label for="cover_custom_off">Off</label>
+                                    <input type="radio" name="coverCustomMode" id="cover_custom_on" value="true">
+                                    <label for="cover_custom_on">On</label>
+                                    <div class="glider"></div>
+                                </div>
                             </div>
                         </div>
 

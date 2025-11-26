@@ -216,16 +216,16 @@ setupGenderToggle('covGenderOptions', 'coverVocalGender');
 setupGenderToggle('extGenderOptions', 'extendVocalGender');
 
 // --- FORM UI UPDATES ---
-const customModeToggle = document.getElementById('customMode');
-const instrumentalToggle = document.getElementById('instrumental');
 const customFields = document.getElementById('customFields');
 const promptContainer = document.getElementById('promptContainer');
 const promptLabel = document.getElementById('promptLabel');
 const vocalGenderGroup = document.getElementById('vocalGenderGroup');
 
 function updateGenUI() {
-    const isCustom = customModeToggle.checked;
-    const isInst = instrumentalToggle.checked;
+    const customModeChecked = document.querySelector('input[name="customMode"]:checked');
+    const instrumentalChecked = document.querySelector('input[name="instrumental"]:checked');
+    const isCustom = customModeChecked && customModeChecked.value === 'true';
+    const isInst = instrumentalChecked && instrumentalChecked.value === 'true';
     if (isCustom) {
         customFields.classList.remove('hidden');
         if (isInst) { promptContainer.classList.add('hidden'); if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); } 
@@ -234,18 +234,22 @@ function updateGenUI() {
         customFields.classList.add('hidden'); promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; genPrompt.placeholder = "A futuristic synthwave track...";
     }
 }
-if(customModeToggle) { customModeToggle.addEventListener('change', updateGenUI); instrumentalToggle.addEventListener('change', updateGenUI); updateGenUI(); updateInputLimits(); }
+document.querySelectorAll('input[name="customMode"], input[name="instrumental"]').forEach(r => {
+    r.addEventListener('change', updateGenUI);
+});
+updateGenUI();
+updateInputLimits();
 
-const coverCustomMode = document.getElementById('coverCustomMode');
-const coverInstrumental = document.getElementById('coverInstrumental');
 const coverCustomFields = document.getElementById('coverCustomFields');
 const coverPromptContainer = document.getElementById('coverPromptContainer');
 const coverPromptLabel = document.getElementById('coverPromptLabel');
 const coverVocalGenderGroup = document.getElementById('coverVocalGenderGroup');
 
 function updateCoverUI() {
-    const isCustom = coverCustomMode.checked;
-    const isInst = coverInstrumental.checked;
+    const coverCustomModeChecked = document.querySelector('input[name="coverCustomMode"]:checked');
+    const coverInstrumentalChecked = document.querySelector('input[name="coverInstrumental"]:checked');
+    const isCustom = coverCustomModeChecked && coverCustomModeChecked.value === 'true';
+    const isInst = coverInstrumentalChecked && coverInstrumentalChecked.value === 'true';
     if (isCustom) {
         coverCustomFields.classList.remove('hidden');
         if (isInst) { coverPromptContainer.classList.add('hidden'); if(coverVocalGenderGroup) coverVocalGenderGroup.classList.add('hidden'); } 
@@ -254,18 +258,21 @@ function updateCoverUI() {
         coverCustomFields.classList.add('hidden'); coverPromptContainer.classList.remove('hidden'); coverPromptLabel.innerText = "Song Description";
     }
 }
-coverCustomMode.addEventListener('change', updateCoverUI); coverInstrumental.addEventListener('change', updateCoverUI); updateCoverUI();
+document.querySelectorAll('input[name="coverCustomMode"], input[name="coverInstrumental"]').forEach(r => {
+    r.addEventListener('change', updateCoverUI);
+});
+updateCoverUI();
 
-const extendCustomMode = document.getElementById('extendCustomMode');
-const extendInstrumental = document.getElementById('extendInstrumental');
 const extendCustomFields = document.getElementById('extendCustomFields');
 const extendPromptContainer = document.getElementById('extendPromptContainer');
 const extendPromptLabel = document.getElementById('extendPromptLabel');
 const extendVocalGenderGroup = document.getElementById('extendVocalGenderGroup');
 
 function updateExtendUI() {
-    const isCustom = extendCustomMode.checked;
-    const isInst = extendInstrumental.checked;
+    const extendCustomModeChecked = document.querySelector('input[name="extendCustomMode"]:checked');
+    const extendInstrumentalChecked = document.querySelector('input[name="extendInstrumental"]:checked');
+    const isCustom = extendCustomModeChecked && extendCustomModeChecked.value === 'true';
+    const isInst = extendInstrumentalChecked && extendInstrumentalChecked.value === 'true';
     if (isCustom) {
         extendCustomFields.classList.remove('hidden');
         if (isInst) { extendPromptContainer.classList.add('hidden'); if(extendVocalGenderGroup) extendVocalGenderGroup.classList.add('hidden'); } 
@@ -274,4 +281,8 @@ function updateExtendUI() {
         extendCustomFields.classList.add('hidden'); extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description";
     }
 }
-if(extendCustomMode) { extendCustomMode.addEventListener('change', updateExtendUI); extendInstrumental.addEventListener('change', updateExtendUI); updateExtendUI(); updateInputLimits(); }
+document.querySelectorAll('input[name="extendCustomMode"], input[name="extendInstrumental"]').forEach(r => {
+    r.addEventListener('change', updateExtendUI);
+});
+updateExtendUI();
+updateInputLimits();

@@ -1,6 +1,24 @@
 // --- GENERATE FORM ---
 const generateForm = document.getElementById('generateForm');
 
+const DEFAULT_MODEL_LIMITS = { prompt: 500, style: 200 };
+
+function getModelLimits(modelKey) {
+    if (typeof MODEL_LIMITS === 'object' && MODEL_LIMITS !== null) {
+        return MODEL_LIMITS[modelKey] || MODEL_LIMITS['V3_5'] || DEFAULT_MODEL_LIMITS;
+    }
+    return DEFAULT_MODEL_LIMITS;
+}
+
+function reportGenerateError(message) {
+    if (!message) return;
+    if (typeof logApi === 'function') {
+        logApi({ type: 'error', msg: message });
+    } else {
+        console.warn('[GenerateForm]', message);
+    }
+}
+
 if (generateForm) {
     generateForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -8,30 +26,84 @@ if (generateForm) {
         const formData = new FormData(generateForm);
         const modelVal = formData.get('model'); 
 
-        // Если вдруг модели нет, тихо выходим или ставим дефолт, но без спама в консоль
-        if (!modelVal) return;
+        if (!modelVal) {
+            reportGenerateError('Please select a model before generating.');
+            return;
+        }
 
-        const promptVal = document.getElementById('prompt').value;
-        const titleVal = document.getElementById('title').value || "Generated Track";
-        const styleVal = document.getElementById('style').value || "AI Style";
-        
+        const promptField = document.getElementById('prompt');
+        const titleField = document.getElementById('title');
+        const styleField = document.getElementById('style');
+        const promptVal = promptField ? promptField.value.trim() : '';
+        const titleVal = titleField ? titleField.value.trim() : '';
+        const styleVal = styleField ? styleField.value.trim() : '';
+        const limits = getModelLimits(modelVal);
+        const errors = [];
+        const MAX_TITLE_LEN = 80;
+
         const customModeChecked = document.querySelector('input[name="customMode"]:checked');
         const instrumentalChecked = document.querySelector('input[name="instrumental"]:checked');
         const isCustom = customModeChecked && customModeChecked.value === 'true';
         const isInstrumental = instrumentalChecked && instrumentalChecked.value === 'true';
 
-        const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
+        if (!isCustom && !promptVal) {
+            errors.push('Song description is required in simple mode.');
+        }
+
+        if (promptVal && promptVal.length > limits.prompt) {
+            errors.push(`Prompt exceeds ${limits.prompt} characters for the selected model.`);
+        }
+
+        if (isCustom) {
+            if (!titleVal) {
+                errors.push('Title is required in Custom Mode.');
+            } else if (titleVal.length > MAX_TITLE_LEN) {
+                errors.push('Title must be 80 characters or less.');
+            }
+
+            if (!styleVal) {
+                errors.push('Style is required in Custom Mode.');
+            } else if (styleVal.length > limits.style) {
+                errors.push(`Style exceeds ${limits.style} characters for the selected model.`);
+            }
+
+            if (!isInstrumental && !promptVal) {
+                errors.push('Lyrics are required when vocals are enabled in Custom Mode.');
+            }
+        }
+
+        if (errors.length > 0) {
+            reportGenerateError(errors[0]);
+            return;
+        }
+
+        const displayTitle = titleVal || "Generated Track";
+        const displayStyle = styleVal || "AI Style";
+        const displayPrompt = promptVal || "Processing...";
+
+        const tempIds = createFakeGeneration(modelVal, displayTitle, displayStyle, displayPrompt);
         pendingTempTracks.push(...tempIds);
 
         const payload = {
-            prompt: promptVal,
             customMode: isCustom,
             instrumental: isInstrumental,
             model: modelVal,
             callBackUrl: "https://example.com/callback"
         };
 
-        const negTags = document.getElementById('negativeTags').value;
+        if (!isCustom || !isInstrumental) {
+            payload.prompt = promptVal;
+        } else if (promptVal) {
+            payload.prompt = promptVal;
+        }
+
+        if (isCustom) {
+            payload.style = styleVal;
+            payload.title = titleVal;
+        }
+
+        const negTagsField = document.getElementById('negativeTags');
+        const negTags = negTagsField ? negTagsField.value.trim() : '';
         if (negTags) payload.negativeTags = negTags;
 
         const sw = document.getElementById('genStyleWeight');
@@ -43,14 +115,10 @@ if (generateForm) {
         const wd = document.getElementById('genWeirdness');
         if (wd && wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
 
-        if (isCustom) {
-            payload.style = styleVal;
-            payload.title = titleVal;
-
-            if (!isInstrumental) {
-                const gender = document.getElementById('vocalGender').value;
-                if (gender) payload.vocalGender = gender;
-            }
+        if (isCustom && !isInstrumental) {
+            const genderField = document.getElementById('vocalGender');
+            const gender = genderField ? genderField.value : '';
+            if (gender) payload.vocalGender = gender;
         }
 
         socket.emit('generate_music', payload);

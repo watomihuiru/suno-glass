@@ -419,6 +419,7 @@ input:checked+.slider:before {
 
 input[type=range].inactive-slider {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     height: 12px;
     background: transparent;
@@ -446,6 +447,7 @@ input[type=range].inactive-slider[data-touched="true"]::-webkit-slider-runnable-
 
 input[type=range].inactive-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
+    appearance: none;
     width: 0;
     height: 0;
     box-shadow: -1000px 0 0 1000px #fff;

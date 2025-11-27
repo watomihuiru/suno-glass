@@ -2,6 +2,7 @@
 const generateForm = document.getElementById('generateForm');
 
 const DEFAULT_MODEL_LIMITS = { prompt: 500, style: 200 };
+const NON_CUSTOM_PROMPT_LIMIT = 500;
 
 function getModelLimits(modelKey) {
     if (typeof MODEL_LIMITS === 'object' && MODEL_LIMITS !== null) {
@@ -16,6 +17,24 @@ function reportGenerateError(message) {
         logApi({ type: 'error', msg: message });
     } else {
         console.warn('[GenerateForm]', message);
+    }
+}
+
+function reportCoverError(message) {
+    if (!message) return;
+    if (typeof logApi === 'function') {
+        logApi({ type: 'error', msg: message });
+    } else {
+        console.warn('[CoverForm]', message);
+    }
+}
+
+function reportExtendError(message) {
+    if (!message) return;
+    if (typeof logApi === 'function') {
+        logApi({ type: 'error', msg: message });
+    } else {
+        console.warn('[ExtendForm]', message);
     }
 }
 
@@ -201,32 +220,89 @@ if (coverForm) {
         e.preventDefault();
 
         const formData = new FormData(coverForm);
-        const hasUrl = !!coverAudioUrlInput.value;
+        const uploadUrl = coverAudioUrlInput.value ? coverAudioUrlInput.value.trim() : '';
 
-        if (!hasUrl) return; 
+        if (!uploadUrl) {
+            reportCoverError('Please provide an audio URL before creating a cover.');
+            return;
+        }
 
         const modelVal = formData.get('coverModel');
-        if (!modelVal) return;
+        if (!modelVal) {
+            reportCoverError('Select a model before submitting a cover task.');
+            return;
+        }
 
-        const promptVal = document.getElementById('coverPrompt').value;
-        const titleVal = document.getElementById('coverTitle').value || "Cover Track";
-        const styleVal = document.getElementById('coverStyle').value || "New Style";
+        const promptField = document.getElementById('coverPrompt');
+        const titleField = document.getElementById('coverTitle');
+        const styleField = document.getElementById('coverStyle');
+        const promptVal = promptField ? promptField.value.trim() : '';
+        const titleVal = titleField ? titleField.value.trim() : '';
+        const styleVal = styleField ? styleField.value.trim() : '';
+        const limits = getModelLimits(modelVal);
+        const errors = [];
+        const coverTitleMax = (modelVal === 'V5' || modelVal === 'V4_5' || modelVal === 'V4_5PLUS') ? 100 : 80;
+        const customPromptLimit = limits.prompt;
+        const promptLimit = document.querySelector('input[name="coverCustomMode"]:checked')?.value === 'true'
+            ? customPromptLimit
+            : Math.min(customPromptLimit, NON_CUSTOM_PROMPT_LIMIT);
+
         const coverCustomModeChecked = document.querySelector('input[name="coverCustomMode"]:checked');
         const coverInstrumentalChecked = document.querySelector('input[name="coverInstrumental"]:checked');
         const isCustom = coverCustomModeChecked && coverCustomModeChecked.value === 'true';
         const isInstrumental = coverInstrumentalChecked && coverInstrumentalChecked.value === 'true';
 
-        const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
+        if (!isCustom && !promptVal) {
+            errors.push('Song description is required in simple mode.');
+        }
+
+        if (promptVal && promptVal.length > promptLimit) {
+            errors.push(`Prompt exceeds ${promptLimit} characters for the selected configuration.`);
+        }
+
+        if (isCustom) {
+            if (!titleVal) {
+                errors.push('Title is required in Custom Mode.');
+            } else if (titleVal.length > coverTitleMax) {
+                errors.push(`Title must be ${coverTitleMax} characters or less for the selected model.`);
+            }
+
+            if (!styleVal) {
+                errors.push('Style is required in Custom Mode.');
+            } else if (styleVal.length > limits.style) {
+                errors.push(`Style exceeds ${limits.style} characters for the selected model.`);
+            }
+
+            if (!isInstrumental && !promptVal) {
+                errors.push('Lyrics are required when vocals are enabled in Custom Mode.');
+            }
+        }
+
+        if (errors.length > 0) {
+            reportCoverError(errors[0]);
+            return;
+        }
+
+        const displayTitle = titleVal || 'Cover Track';
+        const displayStyle = styleVal || 'New Style';
+        const displayPrompt = promptVal || 'Processing...';
+
+        const tempIds = createFakeGeneration(modelVal, displayTitle, displayStyle, displayPrompt);
         pendingTempTracks.push(...tempIds);
 
         const payload = {
-            uploadUrl: coverAudioUrlInput.value,
+            uploadUrl,
             customMode: isCustom,
             instrumental: isInstrumental,
             model: modelVal,
-            prompt: promptVal,
             callBackUrl: "https://example.com/callback",
         };
+
+        if (!isCustom || !isInstrumental) {
+            payload.prompt = promptVal;
+        } else if (promptVal) {
+            payload.prompt = promptVal;
+        }
 
         const negTags = document.getElementById('coverNegativeTags').value;
         if (negTags) payload.negativeTags = negTags;
@@ -244,7 +320,8 @@ if (coverForm) {
             payload.style = styleVal;
             payload.title = titleVal;
             if (!isInstrumental) {
-                const gender = document.getElementById('coverVocalGender').value;
+                const genderField = document.getElementById('coverVocalGender');
+                const gender = genderField ? genderField.value : '';
                 if (gender) payload.vocalGender = gender;
             }
         }
@@ -665,46 +742,83 @@ if (extendForm) {
         e.preventDefault();
 
         const formData = new FormData(extendForm);
-        const hasUrl = !!extendAudioUrlInput.value;
+        const uploadUrl = extendAudioUrlInput && extendAudioUrlInput.value ? extendAudioUrlInput.value.trim() : '';
+        const errors = [];
 
-        if (!hasUrl) return;
+        if (!uploadUrl) {
+            errors.push('Please provide an audio URL before creating an extension task.');
+        }
 
         const modelVal = formData.get('extendModel');
-        if (!modelVal) return;
+        if (!modelVal) {
+            errors.push('Select a model before submitting an extend task.');
+        }
 
-        const promptVal = document.getElementById('extendPrompt').value;
-        const titleVal = document.getElementById('extendTitle').value || "Extended Track";
-        const styleVal = document.getElementById('extendStyle').value || "Original Style";
-        const continueAtVal = document.getElementById('continueAt').value;
+        const promptField = document.getElementById('extendPrompt');
+        const titleField = document.getElementById('extendTitle');
+        const styleField = document.getElementById('extendStyle');
+        const continueAtField = document.getElementById('continueAt');
+
+        const promptVal = promptField ? promptField.value.trim() : '';
+        const titleVal = titleField ? titleField.value.trim() : '';
+        const styleVal = styleField ? styleField.value.trim() : '';
+        let continueAtRaw = continueAtField ? continueAtField.value.trim() : '';
+
+        const limits = modelVal ? getModelLimits(modelVal) : DEFAULT_MODEL_LIMITS;
         const extendCustomModeChecked = document.querySelector('input[name="extendCustomMode"]:checked');
         const extendInstrumentalChecked = document.querySelector('input[name="extendInstrumental"]:checked');
         const isCustom = extendCustomModeChecked && extendCustomModeChecked.value === 'true';
         const isInstrumental = extendInstrumentalChecked && extendInstrumentalChecked.value === 'true';
+        const titleMax = (modelVal === 'V5' || modelVal === 'V4_5' || modelVal === 'V4_5PLUS') ? 100 : 80;
+        const promptLimit = isCustom ? limits.prompt : Math.min(limits.prompt, NON_CUSTOM_PROMPT_LIMIT);
 
-        const tempIds = createFakeGeneration(modelVal, titleVal, styleVal, promptVal);
+        if (!continueAtRaw && extendAudioPlayer && !Number.isNaN(extendAudioPlayer.currentTime)) {
+            continueAtRaw = extendAudioPlayer.currentTime.toFixed(1);
+        }
+
+        const continueAtNum = parseFloat(continueAtRaw);
+        if (!continueAtRaw || Number.isNaN(continueAtNum)) {
+            errors.push('Select the extension point on the waveform before submitting.');
+        } else if (continueAtNum <= 0) {
+            errors.push('Continue At must be greater than 0 seconds.');
+        }
+
+        if (promptVal && promptVal.length > promptLimit) {
+            errors.push(`Prompt exceeds ${promptLimit} characters for the selected configuration.`);
+        }
+
+        if (errors.length > 0) {
+            reportExtendError(errors[0]);
+            return;
+        }
+
+        const displayTitle = titleVal || 'Extended Track';
+        const displayStyle = styleVal || 'Original Style';
+        const displayPrompt = promptVal || 'Processing...';
+
+        const tempIds = createFakeGeneration(modelVal, displayTitle, displayStyle, displayPrompt);
         pendingTempTracks.push(...tempIds);
 
         const payload = {
-            uploadUrl: extendAudioUrlInput.value,
+            uploadUrl,
             defaultParamFlag: isCustom,
             instrumental: isInstrumental,
             model: modelVal,
             callBackUrl: "https://example.com/callback",
+            continueAt: continueAtNum
         };
 
         if (isCustom) {
             payload.style = styleVal;
             payload.title = titleVal;
-            if (continueAtVal) {
-                payload.continueAt = parseFloat(continueAtVal);
-            } else {
-                // Если continueAt не указан, используем 0 как дефолт
-                payload.continueAt = 0;
-            }
-            if (!isInstrumental && promptVal) payload.prompt = promptVal;
         }
 
-        const negTags = document.getElementById('extendNegativeTags').value;
+        if ((isCustom && !isInstrumental && promptVal) || (!isCustom && promptVal)) {
+            payload.prompt = promptVal;
+        }
+
+        const negTagsField = document.getElementById('extendNegativeTags');
+        const negTags = negTagsField ? negTagsField.value.trim() : '';
         if (negTags) payload.negativeTags = negTags;
 
         const sw = document.getElementById('extendStyleWeight');
@@ -717,7 +831,8 @@ if (extendForm) {
         if (wd && wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
 
         if (isCustom && !isInstrumental) {
-            const gender = document.getElementById('extendVocalGender').value;
+            const genderField = document.getElementById('extendVocalGender');
+            const gender = genderField ? genderField.value : '';
             if (gender) payload.vocalGender = gender;
         }
 

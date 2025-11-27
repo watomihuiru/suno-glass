@@ -826,14 +826,17 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
 }
 
 .lyrics-container h3 {
-    margin-bottom: 10px;
-    font-size: 16px;
-    color: var(--accent-color);
+margin-bottom: 10px;
+font-size: 16px;
+color: var(--accent-color);
 }
 
 #modalLyrics {
-    white-space: pre-wrap;
-    line-height: 1.6;
-    color: #d4d4d8;
-    font-size: 14px;
+white-space: pre-wrap;
+line-height: 1.6;
+color: #d7d7df;
+font-size: 17px;
+font-weight: 600;
+letter-spacing: 0.01em;
+font-family: "SF Pro Display", "Inter", "Helvetica Neue", sans-serif;
 }

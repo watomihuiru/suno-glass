@@ -81,6 +81,7 @@ socket.on('task_update', (data) => {
             let modelToSave = serverTrack.model_name;
             if (!modelToSave && existingIndex !== -1) modelToSave = library[existingIndex].model_name;
 
+            const currentProgress = library[existingIndex]?.progress || 0;
             const trackObj = {
                 id: serverTrack.id,
                 taskId: taskId,
@@ -92,13 +93,21 @@ socket.on('task_update', (data) => {
                 status: (status === 'SUCCESS') ? 'complete' : 'generating',
                 model_name: modelToSave || 'AI',
                 lyrics: serverTrack.prompt || "",
-                progress: (status === 'SUCCESS') ? 100 : (library[existingIndex]?.progress || 95)
+                progress: (status === 'SUCCESS') ? 100 : currentProgress
             };
 
             if (existingIndex !== -1) {
                 library[existingIndex] = { ...library[existingIndex], ...trackObj };
+                // Continue progress simulation if track is still generating and progress < 100
+                if (status !== 'SUCCESS' && currentProgress < 100) {
+                    simulateProgress(serverTrack.id);
+                }
             } else {
                 library.unshift(trackObj);
+                // Start progress simulation for new tracks that aren't complete
+                if (status !== 'SUCCESS') {
+                    simulateProgress(serverTrack.id);
+                }
             }
             needsRender = true;
         });
@@ -144,7 +153,10 @@ function createFakeGeneration(model, title, tags, lyrics) {
 }
 
 function simulateProgress(trackId) {
-    let progress = 0;
+    const trackIndex = library.findIndex(t => t.id === trackId);
+    if (trackIndex === -1) return;
+    
+    let progress = library[trackIndex].progress || 0;
     if (progressTimers[trackId]) clearInterval(progressTimers[trackId]);
     progressTimers[trackId] = setInterval(() => {
         progress += 0.8;

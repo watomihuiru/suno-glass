@@ -91,7 +91,8 @@ socket.on('task_update', (data) => {
                 duration: serverTrack.duration || 0,
                 status: (status === 'SUCCESS') ? 'complete' : 'generating',
                 model_name: modelToSave || 'AI',
-                lyrics: serverTrack.prompt || ""
+                lyrics: serverTrack.prompt || "",
+                progress: (status === 'SUCCESS') ? 100 : (library[existingIndex]?.progress || 95)
             };
 
             if (existingIndex !== -1) {
@@ -155,7 +156,19 @@ function simulateProgress(trackId) {
                 const bar = card.querySelector('.loading-progress');
                 if (bar) bar.style.width = `${progress}%`;
             }
-            if (progress >= 95) clearInterval(progressTimers[trackId]);
+            if (progress >= 100) {
+                clearInterval(progressTimers[trackId]);
+                // Update the track status to show completion visually
+                const trackIndex = library.findIndex(t => t.id === trackId);
+                if (trackIndex !== -1) {
+                    library[trackIndex].progress = 100;
+                    const card = document.querySelector(`[data-id="${trackId}"]`);
+                    if (card) {
+                        const bar = card.querySelector('.loading-progress');
+                        if (bar) bar.style.width = '100%';
+                    }
+                }
+            }
         } else {
             clearInterval(progressTimers[trackId]);
             delete progressTimers[trackId];

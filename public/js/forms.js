@@ -392,6 +392,14 @@ function handleExtendFile(file) {
     if (file.size > 10 * 1024 * 1024) return;
     if (!file.type.startsWith('audio/')) return;
 
+    // Останавливаем основной плеер при добавлении файла через drag and drop
+    if (audio && !audio.paused) {
+        audio.pause();
+        isPlaying = false;
+        updatePlayButtonUI();
+        renderLibrary();
+    }
+
     extendAudioUrlInput.value = '';
     extendTrackPreview.classList.add('hidden');
     extendFile = file;
@@ -654,6 +662,13 @@ function updatePlayButton(isPlaying) {
 window.playExtendTrack = function() {
     if (!extendAudioPlayer) return;
     if (extendAudioPlayer.paused) {
+        // Останавливаем основной плеер при запуске extend плеера
+        if (audio && !audio.paused) {
+            audio.pause();
+            isPlaying = false;
+            updatePlayButtonUI();
+            renderLibrary();
+        }
         extendAudioPlayer.play();
     } else {
         extendAudioPlayer.pause();

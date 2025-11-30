@@ -39,6 +39,13 @@ function renderLibrary() {
 // Global actions
 window.togglePlay = function(id) {
     const track = library.find(t => t.id === id); if(!track) return;
+    
+    // Останавливаем extend плеер при запуске основного плеера
+    if (window.extendAudioPlayer && !window.extendAudioPlayer.paused) {
+        window.extendAudioPlayer.pause();
+        window.updatePlayButton(false);
+    }
+    
     if(currentTrackId!==id){ loadTrack(track); audio.play(); isPlaying=true; } else { if(audio.paused){audio.play(); isPlaying=true;} else{audio.pause(); isPlaying=false;} }
     updatePlayButtonUI(); renderLibrary();
 };

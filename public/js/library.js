@@ -81,8 +81,38 @@ window.prepareExtend = function(id) {
     initExtendAudio(track.audioUrl);
 };
 window.downloadTrack = function(id) {
-    const track = library.find(t => t.id === id); if (!track || !track.audioUrl) return;
-    const link = document.createElement('a'); link.href = track.audioUrl; link.download = `${track.title}.mp3`; link.target = '_blank'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    const track = library.find(t => t.id === id); 
+    if (!track || !track.audioUrl) {
+        logApi({
+            type: 'error',
+            msg: 'Cannot download: track or audio URL missing',
+            timestamp: new Date().toISOString()
+        });
+        return;
+    }
+
+    // Request download URL from server
+    socket.emit('get_download_url', { 
+        fileUrl: track.audioUrl, 
+        trackId: id 
+    });
+
+    // Show loading state
+    const menu = document.getElementById(`menu-${id}`);
+    if (menu) {
+        const downloadItem = menu.querySelector('.dropdown-item:nth-child(4)');
+        if (downloadItem) {
+            downloadItem.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Preparing...';
+            downloadItem.style.pointerEvents = 'none';
+        }
+    }
+
+    // Log download request
+    logApi({
+        type: 'info',
+        msg: `Download requested for track: ${track.title}`,
+        timestamp: new Date().toISOString()
+    });
 };
 
 const modal = document.getElementById('lyricsModal'); const closeBtn = document.getElementById('closeModalBtn');

@@ -119,6 +119,63 @@ socket.on('task_update', (data) => {
     }
 });
 
+// Handle download URL response
+socket.on('download_url_ready', (data) => {
+    const { downloadUrl, trackId } = data;
+    const track = library.find(t => t.id === trackId);
+    
+    if (!track) return;
+
+    // Create direct download link
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${track.title}.mp3`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Reset menu state
+    const menu = document.getElementById(`menu-${trackId}`);
+    if (menu) {
+        const downloadItem = menu.querySelector('.dropdown-item:nth-child(4)');
+        if (downloadItem) {
+            downloadItem.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+            downloadItem.style.pointerEvents = 'auto';
+        }
+    }
+
+    // Log successful download
+    logApi({
+        type: 'success',
+        msg: `Download started for track: ${track.title}`,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Handle download error
+socket.on('download_error', (data) => {
+    const { error, trackId } = data;
+    const track = library.find(t => t.id === trackId);
+    
+    // Reset menu state
+    const menu = document.getElementById(`menu-${trackId}`);
+    if (menu) {
+        const downloadItem = menu.querySelector('.dropdown-item:nth-child(4)');
+        if (downloadItem) {
+            downloadItem.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+            downloadItem.style.pointerEvents = 'auto';
+        }
+    }
+
+    // Log error
+    logApi({
+        type: 'error',
+        msg: `Download failed for track ${track?.title || 'unknown'}: ${error}`,
+        timestamp: new Date().toISOString()
+    });
+});
+
 function removePendingTracks() {
     if (pendingTempTracks.length > 0) {
         pendingTempTracks.forEach(tempId => {

@@ -16,13 +16,31 @@
     <div class="main-container">
         <!-- SIDEBAR -->
         <nav class="glass-panel sidebar">
-            <div class="logo"><i class="fa-solid fa-wave-square"></i> Suno AI</div>
+            <div class="logo-container">
+                <div class="logo"><i class="fa-solid fa-wave-square"></i> Suno AI</div>
+                <div class="logo-divider"></div>
+            </div>
             <ul class="menu">
                 <li class="active" data-tab="generate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</li>
                 <li data-tab="extend"><i class="fa-solid fa-arrows-left-right-to-line"></i> Extend</li>
                 <li data-tab="cover"><i class="fa-solid fa-microphone-lines"></i> Cover</li>
                 <li data-tab="logs" class="logs-tab"><i class="fa-solid fa-terminal"></i> API Logs</li>
             </ul>
+            
+            <!-- Credits Display -->
+            <div class="credits-container glass-panel">
+                <div class="credits-header">
+                    <i class="fa-solid fa-coins"></i>
+                    <span>Credits</span>
+                </div>
+                <div class="credits-amount" id="creditsAmount">
+                    <span class="credits-value" id="creditsValue">--</span>
+                </div>
+                <div class="credits-status" id="creditsStatus">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Checking...</span>
+                </div>
+            </div>
         </nav>
 
         <main class="content-area">
@@ -530,6 +548,7 @@
     <script src="js/validation.js"></script>
     <script src="js/error-handler.js"></script>
     <script src="js/dom-utils.js"></script>
+    <script src="js/credits.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/player.js"></script>
     <script src="js/library.js"></script>

@@ -14,7 +14,12 @@ class SocketHandlers {
         socket.on('generate_music', (payload) => this.handleGenerateMusic(socket, payload));
         socket.on('generate_cover', (payload) => this.handleGenerateCover(socket, payload));
         socket.on('generate_extend', (payload) => this.handleGenerateExtend(socket, payload));
+        socket.on('get_credits', () => this.handleGetCredits(socket));
+        socket.on('get_download_url', (data) => this.handleGetDownloadUrl(socket, data));
         socket.on('disconnect', () => this.handleDisconnect(socket));
+        
+        // Auto-check credits on connection
+        this.handleGetCredits(socket);
     }
 
     // Handle generate music request
@@ -41,6 +46,28 @@ class SocketHandlers {
         
         // Clean up any polling intervals for this socket
         this.pollingService.cleanupSocketPolling(socket.id);
+    }
+
+    // Handle get credits request
+    async handleGetCredits(socket) {
+        try {
+            const credits = await this.apiRequestService.getCredits();
+            socket.emit('credits_update', { credits, timestamp: new Date().toISOString() });
+        } catch (error) {
+            socket.emit('credits_error', { error: error.message });
+        }
+    }
+
+    // Handle get download URL request
+    async handleGetDownloadUrl(socket, data) {
+        try {
+            const { fileUrl, trackId } = data;
+            const downloadUrl = await this.apiRequestService.getDownloadUrl(fileUrl);
+            socket.emit('download_url_ready', { downloadUrl, trackId });
+        } catch (error) {
+            console.error('Download URL failed:', error);
+            socket.emit('download_error', { error: error.message, trackId: data.trackId });
+        }
     }
 
     // Universal API request handler

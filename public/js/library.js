@@ -49,8 +49,25 @@ window.togglePlay = function(id) {
     if(currentTrackId!==id){ loadTrack(track); audio.play(); isPlaying=true; } else { if(audio.paused){audio.play(); isPlaying=true;} else{audio.pause(); isPlaying=false;} }
     updatePlayButtonUI(); renderLibrary();
 };
-window.toggleMenu = function(e, id) { e.stopPropagation(); document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); const menu = document.getElementById(`menu-${id}`); if(menu) menu.classList.toggle('show'); };
-document.addEventListener('click', () => { document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); });
+window.toggleMenu = function(e, id) { 
+    e.stopPropagation(); 
+    document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show'));
+    document.querySelectorAll('.track-card').forEach(el => el.style.zIndex = '');
+    
+    const menu = document.getElementById(`menu-${id}`); 
+    const trackCard = document.querySelector(`[data-id="${id}"]`);
+    
+    if(menu) {
+        menu.classList.toggle('show'); 
+        if (menu.classList.contains('show')) {
+            trackCard.style.zIndex = '100';
+        }
+    }
+};
+document.addEventListener('click', () => { 
+    document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); 
+    document.querySelectorAll('.track-card').forEach(el => el.style.zIndex = '');
+});
 
 window.deleteTrack = function(id) { if(confirm('Delete?')){ library = library.filter(t => t.id !== id); if(progressTimers[id]) clearInterval(progressTimers[id]); saveLibrary(); renderLibrary(); if(currentTrackId===id) resetPlayerUI(); } };
 window.prepareCover = function(id) {

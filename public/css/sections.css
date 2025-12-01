@@ -92,7 +92,7 @@
 .track-menu-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 5px; font-size: 14px; transition: 0.2s; } 
 .track-menu-btn:hover { color: white; } 
 
-.dropdown-menu { position: absolute; right: 0; top: 25px; background: #18181b; border: 1px solid var(--glass-border); border-radius: 8px; z-index: 1000; box-shadow: 0 5px 20px rgba(0,0,0,0.7); display: none; flex-direction: column; width: 140px; } 
+.dropdown-menu { position: absolute; right: 0; top: 25px; background: #18181b; border: 1px solid var(--glass-border); border-radius: 8px; z-index: 9999; box-shadow: 0 5px 20px rgba(0,0,0,0.7); display: none; flex-direction: column; width: 140px; backdrop-filter: blur(10px); } 
 .dropdown-menu.show { display: flex; } 
 .dropdown-item { padding: 10px 15px; font-size: 12px; color: #d4d4d8; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; } 
 .dropdown-item:hover { background: rgba(255,255,255,0.1); color: white; } 
@@ -123,8 +123,8 @@
 .player-progress-container { width: 100%; display: flex; align-items: center; gap: 15px; } 
 .time-text { font-size: 12px; color: var(--text-secondary); width: 40px; text-align: center; } 
 
-input[type=range]:not(.inactive-slider) { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; --seek-before-width: 0%; } 
+input[type=range]:not(.inactive-slider) { appearance: none; -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; --seek-before-width: 0%; } 
 input[type=range]:not(.inactive-slider):focus { outline: none; } 
 input[type=range]:not(.inactive-slider)::-webkit-slider-runnable-track { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent-color) 0%, var(--accent-color) var(--seek-before-width), rgba(255, 255, 255, 0.15) var(--seek-before-width), rgba(255, 255, 255, 0.15) 100%); } 
-input[type=range]:not(.inactive-slider)::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); margin-top: -4px; transition: transform 0.1s; } 
+input[type=range]:not(.inactive-slider)::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); margin-top: -4px; transition: transform 0.1s; } 
 input[type=range]:not(.inactive-slider):hover::-webkit-slider-thumb { transform: scale(1.3); }

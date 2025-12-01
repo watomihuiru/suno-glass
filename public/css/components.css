@@ -47,13 +47,17 @@ textarea {
     border-radius: var(--radius-sm);
     font-size: 14px;
     outline: none;
-    transition: 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
+    position: relative;
 }
 
-input:focus,
+input[type="text"]:focus,
 textarea:focus {
     border-color: var(--accent-color);
+    background: rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
 }
 
 textarea {
@@ -172,6 +176,11 @@ textarea {
     padding: 4px;
     height: 44px;
     width: 100%;
+    transition: border-color 0.2s ease;
+}
+
+.toggle-selector:hover {
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-selector input[type="radio"] {
@@ -188,8 +197,13 @@ textarea {
     font-size: 14px;
     font-weight: 600;
     color: var(--text-secondary);
-    transition: color 0.3s ease;
+    transition: color 0.2s ease;
     margin: 0 !important;
+    position: relative;
+}
+
+.toggle-selector label:hover {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .toggle-selector input[type="radio"]:checked+label {
@@ -205,7 +219,8 @@ textarea {
     background: #ffffff;
     border-radius: 40px;
     z-index: 1;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Glider positions for toggle selectors */
@@ -272,6 +287,62 @@ textarea {
     background: #ffffff;
     color: #000;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transform: scale(1.05);
+}
+
+/* CUSTOM FIELDS ANIMATIONS */
+#customFields,
+#coverCustomFields,
+#extendCustomFields {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(-15px);
+    margin-top: 0;
+}
+
+#customFields:not(.hidden),
+#coverCustomFields:not(.hidden),
+#extendCustomFields:not(.hidden) {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: translateY(0);
+    margin-top: 20px;
+}
+
+#customFields > *,
+#coverCustomFields > *,
+#extendCustomFields > * {
+    overflow: hidden;
+}
+
+/* PROMPT CONTAINER ANIMATIONS */
+#promptContainer,
+#coverPromptContainer,
+#extendPromptContainer {
+    display: grid;
+    grid-template-rows: 1fr;
+    opacity: 1;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0);
+}
+
+#promptContainer.hidden,
+#coverPromptContainer.hidden,
+#extendPromptContainer.hidden {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transform: translateY(-10px);
+    margin: 0 !important;
+}
+
+#promptContainer > *,
+#coverPromptContainer > *,
+#extendPromptContainer > * {
+    overflow: hidden;
 }
 
 .settings-grid {
@@ -364,16 +435,18 @@ input:checked+.slider:before {
     cursor: pointer;
     font-size: 13px;
     color: var(--text-secondary);
-    transition: 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .advanced-toggle:hover {
     background: rgba(255, 255, 255, 0.08);
     color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .advanced-toggle i {
-    transition: transform 0.3s;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .advanced-toggle.active i {
@@ -381,18 +454,31 @@ input:checked+.slider:before {
 }
 
 .advanced-content {
-    max-height: 0;
-    overflow: hidden;
+    display: grid;
+    grid-template-rows: 0fr;
     opacity: 0;
-    transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
-    padding: 0 10px;
+    height: 0;
+    transition: grid-template-rows 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease, 
+                height 0.3s ease,
+                transform 0.3s ease;
+    transform: translateY(-10px);
+    overflow: hidden;
+    margin: 0 -10px;
+    padding: 0;
 }
 
 .advanced-content.open {
-    max-height: 600px;
+    grid-template-rows: 1fr;
     opacity: 1;
-    border-left: 2px solid var(--glass-border);
+    height: auto;
+    transform: translateY(0);
     margin-top: 10px;
+    padding: 0 10px;
+}
+
+.advanced-content > * {
+    overflow: hidden;
 }
 
 .sliders-grid {
@@ -473,15 +559,42 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.generate-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.generate-btn:hover::before {
+    width: 300px;
+    height: 300px;
 }
 
 .generate-btn:hover {
     background: #565add;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+}
+
+.generate-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
 
 .generate-btn.disabled {
@@ -489,6 +602,7 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     cursor: not-allowed;
 }
 
+/* RESET BUTTON WITH ENHANCED ANIMATION */
 .reset-btn {
     display: flex;
     width: 0;
@@ -503,24 +617,27 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     font-size: 18px;
     margin-right: 0;
     opacity: 0;
-    transform: scale(0.5) translateX(-20px);
+    transform: scale(0.3) translateX(-30px) rotate(-180deg);
     overflow: hidden;
     pointer-events: none;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    filter: blur(2px);
 }
 
 .reset-btn.visible {
     width: 50px;
     margin-right: 10px;
     opacity: 1;
-    transform: scale(1) translateX(0);
+    transform: scale(1) translateX(0) rotate(0deg);
     border-width: 1px;
     pointer-events: auto;
+    filter: blur(0);
 }
 
 .reset-btn:hover {
     background: rgba(239, 68, 68, 0.3);
-    transform: rotate(15deg) scale(1.1);
+    transform: rotate(15deg) scale(1.1) translateX(2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
 }
 
 /* UPLOAD & PREVIEW */
@@ -530,15 +647,33 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     padding: 30px;
     text-align: center;
     cursor: pointer;
-    transition: 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background: rgba(255, 255, 255, 0.02);
     position: relative;
+    overflow: hidden;
+}
+
+.upload-zone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-zone:hover::before {
+    left: 100%;
 }
 
 .upload-zone:hover,
 .upload-zone.dragover {
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.1);
 }
 
 .upload-content {
@@ -754,20 +889,32 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     transform: scale(1.2);
 }
 
-/* MODAL */
+/* MODAL WITH ENHANCED ANIMATION */
 .modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0);
     z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(5px);
-    animation: fadeIn 0.3s ease;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    opacity: 0;
+    transition: background 0.15s ease-out, opacity 0.15s ease-out, backdrop-filter 0.15s ease-out;
+    pointer-events: none;
+    will-change: background, opacity, backdrop-filter;
+}
+
+.modal.show {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .modal.hidden {
@@ -781,6 +928,15 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     position: relative;
     display: flex;
     flex-direction: column;
+    transform: scale(0.96) translateY(8px);
+    opacity: 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease-out;
+    will-change: transform, opacity;
+}
+
+.modal.show .modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
 }
 
 .close-modal-btn {
@@ -798,11 +954,12 @@ input[type=range].inactive-slider::-webkit-slider-thumb {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-modal-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg) scale(1.1);
 }
 
 .modal-body {

@@ -168,8 +168,26 @@ window.openLyrics = function(id) {
     const track = library.find(t => t.id === id); if(!track) return;
     document.getElementById('modalCover').src = track.imageUrl; document.getElementById('modalTitle').innerText = track.title; document.getElementById('modalTags').innerText = track.tags; document.getElementById('modalLyrics').innerText = track.lyrics || "No lyrics.";
     modal.classList.remove('hidden');
+    // Trigger reflow for animation
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
 };
-closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+closeBtn.addEventListener('click', () => {
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 150);
+});
+
+modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 150);
+    }
+});
 
 // Menu auto-close functionality
 function setupMenuAutoClose(menu) {

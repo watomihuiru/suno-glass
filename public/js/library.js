@@ -49,6 +49,12 @@ window.togglePlay = function(id) {
     if(currentTrackId!==id){ loadTrack(track); audio.play(); isPlaying=true; } else { if(audio.paused){audio.play(); isPlaying=true;} else{audio.pause(); isPlaying=false;} }
     updatePlayButtonUI(); renderLibrary();
 };
+
+// Global variables for menu auto-close
+let menuAutoCloseTimer = null;
+let currentOpenMenu = null;
+let menuMouseMoveHandler = null;
+
 window.toggleMenu = function(e, id) { 
     e.stopPropagation(); 
     document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show'));
@@ -61,6 +67,7 @@ window.toggleMenu = function(e, id) {
         menu.classList.toggle('show'); 
         if (menu.classList.contains('show')) {
             trackCard.style.zIndex = '100';
+            currentOpenMenu = menu;
             
             // Remove upward class first
             menu.classList.remove('upward');
@@ -74,9 +81,16 @@ window.toggleMenu = function(e, id) {
                 // Not enough space below, position upward
                 menu.classList.add('upward');
             }
+            
+            // Setup auto-close functionality
+            setupMenuAutoClose(menu);
+        } else {
+            currentOpenMenu = null;
+            clearMenuAutoClose();
         }
     }
 };
+
 document.addEventListener('click', () => { 
     document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('show')); 
     document.querySelectorAll('.track-card').forEach(el => el.style.zIndex = '');
@@ -156,3 +170,53 @@ window.openLyrics = function(id) {
     modal.classList.remove('hidden');
 };
 closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+// Menu auto-close functionality
+function setupMenuAutoClose(menu) {
+    clearMenuAutoClose();
+    
+    const checkDistance = (e) => {
+        if (!menu || !menu.classList.contains('show')) {
+            clearMenuAutoClose();
+            return;
+        }
+        
+        const menuRect = menu.getBoundingClientRect();
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        // Calculate distance from cursor to menu bounds
+        const distance = Math.min(
+            Math.abs(mouseX - menuRect.left),
+            Math.abs(mouseX - menuRect.right),
+            Math.abs(mouseY - menuRect.top),
+            Math.abs(mouseY - menuRect.bottom)
+        );
+        
+        // If cursor is more than 150px away from menu, close it
+        if (distance > 150) {
+            menu.classList.remove('show');
+            document.querySelectorAll('.track-card').forEach(el => el.style.zIndex = '');
+            currentOpenMenu = null;
+            clearMenuAutoClose();
+        }
+    };
+    
+    menuMouseMoveHandler = checkDistance;
+    
+    // Start checking mouse position with a small delay
+    menuAutoCloseTimer = setTimeout(() => {
+        document.addEventListener('mousemove', menuMouseMoveHandler);
+    }, 100);
+}
+
+function clearMenuAutoClose() {
+    if (menuAutoCloseTimer) {
+        clearTimeout(menuAutoCloseTimer);
+        menuAutoCloseTimer = null;
+    }
+    if (menuMouseMoveHandler) {
+        document.removeEventListener('mousemove', menuMouseMoveHandler);
+        menuMouseMoveHandler = null;
+    }
+}

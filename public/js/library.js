@@ -61,6 +61,19 @@ window.toggleMenu = function(e, id) {
         menu.classList.toggle('show'); 
         if (menu.classList.contains('show')) {
             trackCard.style.zIndex = '100';
+            
+            // Remove upward class first
+            menu.classList.remove('upward');
+            
+            // Check if menu would overflow viewport
+            const menuRect = menu.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - menuRect.top;
+            
+            if (spaceBelow < menuRect.height + 20) {
+                // Not enough space below, position upward
+                menu.classList.add('upward');
+            }
         }
     }
 };

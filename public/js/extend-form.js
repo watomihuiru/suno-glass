@@ -623,3 +623,10 @@ window.playExtendTrack = function() {
 
 // Initialize the extend form handler
 window.extendFormHandler = new ExtendFormHandler();
+
+// Global wrapper function for library.js compatibility
+window.initExtendAudio = function(audioUrl) {
+    if (window.extendFormHandler) {
+        window.extendFormHandler.initExtendAudio(audioUrl);
+    }
+};

@@ -276,4 +276,4 @@ class CoverFormHandler {
 }
 
 // Initialize the cover form handler
-const coverFormHandler = new CoverFormHandler();
+window.coverFormHandler = new CoverFormHandler();

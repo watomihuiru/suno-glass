@@ -56,7 +56,9 @@ window.deleteTrack = function(id) { if(confirm('Delete?')){ library = library.fi
 window.prepareCover = function(id) {
     const track = library.find(t => t.id === id); if (!track || !track.audioUrl) { alert("Audio URL is missing."); return; }
     document.querySelector('[data-tab="cover"]').click();
-    resetFile();
+    if (window.coverFormHandler) {
+        window.coverFormHandler.resetFile();
+    }
     const coverAudioUrlInput = document.getElementById('coverAudioUrl');
     coverAudioUrlInput.value = track.audioUrl;
     document.getElementById('uploadContent').classList.add('hidden');
@@ -68,7 +70,9 @@ window.prepareCover = function(id) {
 window.prepareExtend = function(id) {
     const track = library.find(t => t.id === id); if (!track || !track.audioUrl) { alert("Audio URL is missing."); return; }
     document.querySelector('[data-tab="extend"]').click();
-    resetExtendFile();
+    if (window.extendFormHandler) {
+        window.extendFormHandler.resetFile();
+    }
     const extendAudioUrlInput = document.getElementById('extendAudioUrl');
     extendAudioUrlInput.value = track.audioUrl;
     document.getElementById('extendUploadContent').classList.add('hidden');

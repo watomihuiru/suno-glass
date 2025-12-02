@@ -105,20 +105,6 @@ textarea::-webkit-scrollbar-corner {
     background: rgba(0, 0, 0, 0.3);
 }
 
-textarea::-webkit-resizer {
-    background: linear-gradient(135deg, transparent 35%, rgba(255, 255, 255, 0.3) 35%, rgba(255, 255, 255, 0.3) 65%, transparent 65%);
-    border-radius: 0 0 8px 0;
-    width: 16px;
-    height: 16px;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-}
-
-textarea::-webkit-resizer:hover {
-    opacity: 1;
-    background: linear-gradient(135deg, transparent 35%, rgba(255, 255, 255, 0.5) 35%, rgba(255, 255, 255, 0.5) 65%, transparent 65%);
-}
-
 .glass-select {
     width: 100%;
     background: rgba(0, 0, 0, 0.3);

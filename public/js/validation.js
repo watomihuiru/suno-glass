@@ -27,29 +27,29 @@ const ValidationUtils = {
         
         // Validate prompt/lyrics
         if (!isCustom && !promptVal) {
-            errors.push('Song description is required in simple mode.');
+            errors.push('Требуется описание песни в простом режиме.');
         }
         
         if (promptVal && promptVal.length > promptLimit) {
-            errors.push(`Prompt exceeds ${promptLimit} characters for the selected configuration.`);
+            errors.push(`Текст запроса превышает ${promptLimit} символов для выбранной конфигурации.`);
         }
         
         // Custom mode specific validations
         if (isCustom) {
             if (!titleVal) {
-                errors.push('Title is required in Custom Mode.');
+                errors.push('В пользовательском режиме требуется указать название.');
             } else if (titleVal.length > titleMax) {
-                errors.push(`Title must be ${titleMax} characters or less for the selected model.`);
+                errors.push(`Название должно содержать не более ${titleMax} символов для выбранной модели.`);
             }
             
             if (!styleVal) {
-                errors.push('Style is required in Custom Mode.');
+                errors.push('В пользовательском режиме требуется указать стиль.');
             } else if (styleVal.length > limits.style) {
-                errors.push(`Style exceeds ${limits.style} characters for the selected model.`);
+                errors.push(`Стиль превышает ${limits.style} символов для выбранной модели.`);
             }
             
             if (!isInstrumental && !promptVal) {
-                errors.push('Lyrics are required when vocals are enabled in Custom Mode.');
+                errors.push('Текст песни обязателен при включенном вокале в пользовательском режиме.');
             }
         }
         

@@ -7,6 +7,10 @@ class CoverFormHandler {
         this.coverAudioUrlInput = document.getElementById('coverAudioUrl');
         this.coverFile = null;
         
+        if (this.form) {
+            this.form.noValidate = true;
+        }
+
         this.init();
     }
 
@@ -145,7 +149,7 @@ class CoverFormHandler {
             const errors = this.validateFormData(formData);
             
             if (errors.length > 0) {
-                this.reportError(errors[0]);
+                this.reportError(this.combineErrors(errors));
                 return;
             }
 
@@ -265,12 +269,45 @@ class CoverFormHandler {
         return element && element.value === value;
     }
 
+    combineErrors(errors) {
+        if (!Array.isArray(errors) || errors.length === 0) return '';
+
+        if (errors.length === 1) return errors[0];
+
+        const fieldMap = [
+            { key: 'Title is required in Custom Mode.', label: 'Название' },
+            { key: 'Style is required in Custom Mode.', label: 'Стиль' },
+            { key: 'Lyrics are required when vocals are enabled in Custom Mode.', label: 'Текст песни' },
+            { key: 'Song description is required in simple mode.', label: 'Описание песни' }
+        ];
+
+        const missingFields = [];
+        errors.forEach(err => {
+            fieldMap.forEach(({ key, label }) => {
+                if (err.includes(key) && !missingFields.includes(label)) {
+                    missingFields.push(label);
+                }
+            });
+        });
+
+        if (missingFields.length === 0) {
+            return errors[0];
+        }
+
+        if (missingFields.length === 1) {
+            return `Не заполнено поле: ${missingFields[0]}.`;
+        }
+
+        const list = missingFields.join(', ');
+        return `Не заполнены поля: ${list}.`;
+    }
+
     reportError(message) {
         if (!message) return;
-        if (typeof logApi === 'function') {
-            logApi({ type: 'error', msg: message });
-        } else {
-            console.warn('[CoverForm]', message);
+        console.warn('[CoverForm]', message);
+
+        if (window && typeof window.showNotification === 'function') {
+            window.showNotification(message);
         }
     }
 }

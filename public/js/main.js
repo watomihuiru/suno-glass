@@ -1,6 +1,7 @@
 // SOCKET LISTENERS
 
 socket.on('task_created', (data) => {
+
     if (pendingTempTracks.length > 0) {
         library = library.map(track => {
             if (pendingTempTracks.includes(track.id)) {
@@ -17,10 +18,20 @@ socket.on('task_created', (data) => {
 socket.on('task_failed_creation', (data) => {
     // Тихо удаляем фейковые карточки, пользователь увидит ошибку в Logs tab
     removePendingTracks();
+
+    if (window.showNotification && data && data.msg) {
+        window.showNotification(data.msg);
+    }
 });
 
 socket.on('error_message', (msg) => {
     // В Logs tab это попадет через api_log, здесь ничего не делаем, чтобы не спамить
+});
+
+socket.on('api_error', (payload) => {
+    if (window.showNotification && payload && payload.message) {
+        window.showNotification(payload.message);
+    }
 });
 
 socket.on('api_log', logApi);

@@ -38,23 +38,23 @@ function validatePayload(payload, mode = 'generate') {
     
     // Style validation (for custom mode)
     if (payload.customMode && payload.style && payload.style.length > limits.style) {
-        errors.push(`Style exceeds ${limits.style} characters`);
+        errors.push(`Стиль превышает ${limits.style} символов`);
     }
     
     // Required fields validation
     if (payload.customMode) {
-        if (!payload.title) errors.push('Title is required in Custom Mode');
-        if (!payload.style) errors.push('Style is required in Custom Mode');
+        if (!payload.title) errors.push('В пользовательском режиме требуется указать название');
+        if (!payload.style) errors.push('В пользовательском режиме требуется указать стиль');
         if (!payload.instrumental && !payload.prompt) {
-            errors.push('Lyrics are required when vocals are enabled');
+            errors.push('Текст песни обязателен при включенном вокале');
         }
     } else if (!payload.prompt) {
-        errors.push('Song description is required in simple mode');
+        errors.push('Требуется описание песни в простом режиме');
     }
     
     // Extend mode specific validation
     if (mode === 'extend' && (!payload.continueAt || isNaN(parseFloat(payload.continueAt)))) {
-        errors.push('Valid continueAt timestamp is required for extend mode');
+        errors.push('Для режима продолжения требуется корректная временная метка continueAt');
     }
     
     if (errors.length > 0) {

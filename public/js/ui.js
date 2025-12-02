@@ -5,6 +5,112 @@ document.getElementById('clearLogsBtn').addEventListener('click', () => {
     jsonOutput.innerHTML = '<div class="log-entry info">Logs cleared.</div>'; 
 });
 
+// --- INLINE NOTIFICATIONS ---
+let activeNotificationTimeout = null;
+
+function getNotificationContainer() {
+    const existing = document.querySelector('.inline-notification');
+    if (existing) return existing;
+
+    const container = DOMUtils.createElement({
+        tag: 'div',
+        classes: ['inline-notification'],
+        styles: {
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            maxWidth: '520px',
+            width: 'calc(100% - 32px)',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: 'rgba(15, 23, 42, 0.92)',
+            color: '#e5e7eb',
+            fontSize: '13px',
+            lineHeight: '1.4',
+            boxShadow: '0 18px 45px rgba(15, 23, 42, 0.55)',
+            zIndex: '1200',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            pointerEvents: 'none'
+        }
+    });
+
+    const icon = DOMUtils.createElement({
+        tag: 'div',
+        classes: ['inline-notification__icon'],
+        styles: {
+            width: '6px',
+            height: '6px',
+            marginTop: '6px',
+            borderRadius: '999px',
+            background: '#f97373',
+            boxShadow: '0 0 0 4px rgba(248, 113, 113, 0.18)'
+        }
+    });
+
+    const text = DOMUtils.createElement({
+        tag: 'div',
+        classes: ['inline-notification__text'],
+        styles: {
+            flex: '1',
+            whiteSpace: 'pre-wrap'
+        }
+    });
+
+    container.appendChild(icon);
+    container.appendChild(text);
+
+    document.body.appendChild(container);
+    return container;
+}
+
+function showNotification(message) {
+    if (!message) return;
+
+    const container = getNotificationContainer();
+    const text = container.querySelector('.inline-notification__text');
+    if (text) {
+        text.textContent = message;
+    }
+
+    container.style.opacity = '0';
+    container.style.transform = 'translateX(-50%) translateY(-6px)';
+
+    requestAnimationFrame(() => {
+        container.style.transition = 'opacity 140ms ease, transform 140ms ease';
+        container.style.opacity = '1';
+        container.style.transform = 'translateX(-50%) translateY(0)';
+    });
+
+    if (activeNotificationTimeout) {
+        clearTimeout(activeNotificationTimeout);
+    }
+
+    activeNotificationTimeout = setTimeout(() => {
+        clearNotification();
+    }, 4200);
+}
+
+function clearNotification() {
+    const container = document.querySelector('.inline-notification');
+    if (!container) return;
+
+    container.style.opacity = '0';
+    container.style.transform = 'translateX(-50%) translateY(-6px)';
+
+    setTimeout(() => {
+        if (container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
+    }, 160);
+}
+
+// Make notification functions available globally for other modules
+window.showNotification = showNotification;
+window.clearNotification = clearNotification;
+
 function logApi(msg) {
     if(jsonOutput.querySelector('.info')) jsonOutput.innerHTML = '';
     
@@ -188,9 +294,6 @@ document.getElementById('coverResetBtn').addEventListener('click', () => resetAd
 const extResetBtn = document.getElementById('extendResetBtn');
 if (extResetBtn) extResetBtn.addEventListener('click', () => resetAdvanced('extendNegativeTags', 'extGenderOptions', 'extendVocalGender', ['extendStyleWeight', 'extendAudioWeight', 'extendWeirdness'], 'extendResetBtn'));
 document.getElementById('negativeTags').addEventListener('input', checkAdvancedState);
-document.getElementById('coverNegativeTags').addEventListener('input', checkAdvancedState);
-const extNegTags = document.getElementById('extendNegativeTags');
-if (extNegTags) extNegTags.addEventListener('input', checkAdvancedState);
 
 // --- GENDER TOGGLES ---
 function setupGenderToggle(groupId, hiddenInputId) {
@@ -210,10 +313,14 @@ function setupGenderToggle(groupId, hiddenInputId) {
             checkAdvancedState();
         });
     });
+} // Added closing bracket here
+
+function setupNativeValidationNotifications() {
+    // Native HTML5 validation is disabled via form.noValidate,
+    // so we intentionally keep this as a no-op to avoid
+    // duplicate, field-by-field notifications.
 }
-setupGenderToggle('genGenderOptions', 'vocalGender');
-setupGenderToggle('covGenderOptions', 'coverVocalGender');
-setupGenderToggle('extGenderOptions', 'extendVocalGender');
+setupNativeValidationNotifications();
 
 // --- FORM UI UPDATES ---
 const customFields = document.getElementById('customFields');

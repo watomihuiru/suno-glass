@@ -48,33 +48,38 @@ if (generateForm) {
         const isInstrumental = instrumentalChecked && instrumentalChecked.value === 'true';
 
         if (!isCustom && !promptVal) {
-            errors.push('Song description is required in simple mode.');
+            errors.push('Требуется описание песни в простом режиме.');
         }
 
         if (promptVal && promptVal.length > limits.prompt) {
-            errors.push(`Prompt exceeds ${limits.prompt} characters for the selected model.`);
+            errors.push(`Текст запроса превышает ${limits.prompt} символов для выбранной модели.`);
         }
 
         if (isCustom) {
             if (!titleVal) {
-                errors.push('Title is required in Custom Mode.');
+                errors.push('В пользовательском режиме требуется указать название.');
             } else if (titleVal.length > MAX_TITLE_LEN) {
-                errors.push('Title must be 80 characters or less.');
+                errors.push('Название должно содержать не более 80 символов.');
             }
 
             if (!styleVal) {
-                errors.push('Style is required in Custom Mode.');
+                errors.push('В пользовательском режиме требуется указать стиль.');
             } else if (styleVal.length > limits.style) {
-                errors.push(`Style exceeds ${limits.style} characters for the selected model.`);
+                errors.push(`Стиль превышает ${limits.style} символов для выбранной модели.`);
             }
 
             if (!isInstrumental && !promptVal) {
-                errors.push('Lyrics are required when vocals are enabled in Custom Mode.');
+                errors.push('Текст песни обязателен при включенном вокале в пользовательском режиме.');
             }
         }
 
         if (errors.length > 0) {
-            reportGenerateError(errors[0]);
+            if (typeof reportGenerateError === 'function') {
+                reportGenerateError(errors[0]);
+            }
+            if (window.showNotification) {
+                window.showNotification(errors[0]);
+            }
             return;
         }
 

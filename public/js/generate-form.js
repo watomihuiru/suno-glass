@@ -2,6 +2,9 @@
 class GenerateFormHandler {
     constructor() {
         this.form = document.getElementById('generateForm');
+        if (this.form) {
+            this.form.noValidate = true;
+        }
         this.init();
     }
 
@@ -19,7 +22,7 @@ class GenerateFormHandler {
             const errors = this.validateFormData(formData);
             
             if (errors.length > 0) {
-                this.reportError(errors[0]);
+                this.reportError(this.combineErrors(errors));
                 return;
             }
 
@@ -115,12 +118,45 @@ class GenerateFormHandler {
         return element && element.value === value;
     }
 
+    combineErrors(errors) {
+        if (!Array.isArray(errors) || errors.length === 0) return '';
+
+        if (errors.length === 1) return errors[0];
+
+        const fieldMap = [
+            { key: 'Title is required in Custom Mode.', label: 'Название' },
+            { key: 'Style is required in Custom Mode.', label: 'Стиль' },
+            { key: 'Lyrics are required when vocals are enabled in Custom Mode.', label: 'Текст песни' },
+            { key: 'Song description is required in simple mode.', label: 'Описание песни' }
+        ];
+
+        const missingFields = [];
+        errors.forEach(err => {
+            fieldMap.forEach(({ key, label }) => {
+                if (err.includes(key) && !missingFields.includes(label)) {
+                    missingFields.push(label);
+                }
+            });
+        });
+
+        if (missingFields.length === 0) {
+            return errors[0];
+        }
+
+        if (missingFields.length === 1) {
+            return `Не заполнено поле: ${missingFields[0]}.`;
+        }
+
+        const list = missingFields.join(', ');
+        return `Не заполнены поля: ${list}.`;
+    }
+
     reportError(message) {
         if (!message) return;
-        if (typeof logApi === 'function') {
-            logApi({ type: 'error', msg: message });
-        } else {
-            console.warn('[GenerateForm]', message);
+        console.warn('[GenerateForm]', message);
+
+        if (window && typeof window.showNotification === 'function') {
+            window.showNotification(message);
         }
     }
 }

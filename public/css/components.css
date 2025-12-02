@@ -176,11 +176,6 @@ textarea {
     padding: 4px;
     height: 44px;
     width: 100%;
-    transition: border-color 0.2s ease;
-}
-
-.toggle-selector:hover {
-    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-selector input[type="radio"] {
@@ -197,13 +192,8 @@ textarea {
     font-size: 14px;
     font-weight: 600;
     color: var(--text-secondary);
-    transition: color 0.2s ease;
     margin: 0 !important;
     position: relative;
-}
-
-.toggle-selector label:hover {
-    color: rgba(255, 255, 255, 0.8);
 }
 
 .toggle-selector input[type="radio"]:checked+label {

@@ -117,8 +117,9 @@
 .player-center-group { flex: 1; max-width: 800px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; } 
 .player-controls { display: flex; align-items: center; gap: 25px; } 
 
-.control-btn { background: none; border: none; color: #d4d4d8; cursor: pointer; font-size: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 8px; border-radius: 50%; } 
-.control-btn:hover { color: white; transform: scale(1.2); background: rgba(255, 255, 255, 0.1); } 
+.control-btn { background: none; border: none; color: #d4d4d8; cursor: pointer; font-size: 16px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 8px; border-radius: 50%; }
+.control-btn:hover { color: white; transform: scale(1.2); } 
+ 
 .control-btn.active { color: var(--accent-color); } 
 
 .play-main { width: 40px; height: 40px; background: white; color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.2s; } 

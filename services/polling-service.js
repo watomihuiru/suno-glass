@@ -1,80 +1,215 @@
 // Polling service module
+const { 
+    FATAL_ERRORS,
+    REQUEST_TIMEOUT
+} = require('./error-codes');
+
 class PollingService {
     constructor() {
         this.pollingIntervals = new Map(); // Track active polling intervals
-        this.POLLING_INTERVAL = 8000;
-        this.FATAL_ERRORS = ['FAILED', 'SENSITIVE_WORD_ERROR', 'CALLBACK_EXCEPTION'];
+        this.POLLING_INTERVAL = 8000; // 8 seconds between polls
+        this.MAX_POLLING_ATTEMPTS = 50; // Max polling attempts (about 6-7 minutes for 8s interval)
+        this.POLLING_TIMEOUT = 10 * 60 * 1000; // 10 minutes max polling time
     }
 
     // Start polling for task status
     startPolling(socket, taskId, apiRequestService) {
         // Clear any existing interval for this task
         if (this.pollingIntervals.has(taskId)) {
-            clearInterval(this.pollingIntervals.get(taskId).interval);
+            this.cleanupPolling(taskId);
         }
 
-        const interval = setInterval(async () => {
+        const startTime = Date.now();
+        let pollCount = 0;
+        let isPolling = true;
+        
+        const poll = async () => {
+            if (!isPolling) return;
+            
             try {
-                const data = await apiRequestService.getTaskStatus(taskId);
-
-                if (data.code === 200) {
-                    const shouldContinue = this.handlePollingResponse(data, socket, taskId);
+                pollCount++;
+                
+                // Check if max attempts or timeout reached
+                if (pollCount > this.MAX_POLLING_ATTEMPTS || 
+                    (Date.now() - startTime) > this.POLLING_TIMEOUT) {
                     
-                    if (!shouldContinue) {
-                        // Stop polling
-                        clearInterval(interval);
-                        this.pollingIntervals.delete(taskId);
-                    }
-                } else {
-                    // API error - stop polling
-                    socket.emit('api_log', { type: 'error', code: data.code, msg: data.msg || "Polling Http Error" });
-                    clearInterval(interval);
-                    this.pollingIntervals.delete(taskId);
+                    const error = new Error('Превышено время ожидания выполнения задачи');
+                    error.code = 'POLLING_TIMEOUT';
+                    error.taskId = taskId;
+                    
+                    // Stop polling immediately
+                    isPolling = false;
+                    
+                    // Clean up before emitting the error
+                    this.cleanupPolling(taskId);
+                    
+                    // Emit the error
+                    socket.emit('task_error', {
+                        taskId,
+                        code: error.code,
+                        message: error.message,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Don't throw, just return to stop further execution
+                    return;
                 }
+                
+                // Get task status
+                const data = await apiRequestService.getTaskStatus(taskId);
+                
+                // Process the response
+                const shouldContinue = this.handlePollingResponse(data, socket, taskId);
+                
+                // Stop polling if task is complete or failed
+                if (!shouldContinue) {
+                    isPolling = false;
+                    this.cleanupPolling(taskId);
+                    return;
+                }
+                
+                // Schedule next poll if still polling
+                if (isPolling) {
+                    this.scheduleNextPoll(taskId, socket, poll);
+                }
+                
             } catch (error) {
-                console.error("Polling Error:", error);
-                socket.emit('api_log', { type: 'error', code: 500, msg: error.message });
-                clearInterval(interval);
-                this.pollingIntervals.delete(taskId);
+                if (!isPolling) return;
+                
+                console.error(`[Polling Error] Task ${taskId}:`, error);
+                
+                // Emit error to client
+                socket.emit('task_error', {
+                    taskId,
+                    code: error.code || 'POLLING_ERROR',
+                    message: error.message,
+                    details: error.details,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Clean up and stop polling
+                isPolling = false;
+                this.cleanupPolling(taskId);
             }
-        }, this.POLLING_INTERVAL);
-
-        // Store interval reference
+        };
+        
+        // Store polling context
         this.pollingIntervals.set(taskId, {
-            interval,
+            interval: null, // Will be set by scheduleNextPoll
             socketId: socket.id,
-            startTime: Date.now()
+            startTime,
+            pollCount: 0,
+            lastPollTime: null
         });
+        
+        // Start polling
+        poll();
+    }
+    
+    // Schedule the next poll with exponential backoff
+    scheduleNextPoll(taskId, socket, pollFunction) {
+        const pollingContext = this.pollingIntervals.get(taskId);
+        if (!pollingContext) return;
+        
+        // Calculate delay with exponential backoff (capped at 30s)
+        const baseDelay = Math.min(
+            this.POLLING_INTERVAL * Math.pow(1.5, Math.floor(pollingContext.pollCount / 5)),
+            30000
+        );
+        
+        // Add jitter to prevent thundering herd
+        const jitter = Math.random() * 1000;
+        const delay = Math.floor(baseDelay + jitter);
+        
+        // Store the timeout ID
+        pollingContext.interval = setTimeout(pollFunction, delay);
+        pollingContext.lastPollTime = Date.now();
+        pollingContext.pollCount++;
+        
+        // Log the next poll time
+        const nextPollTime = new Date(Date.now() + delay);
+        socket.emit('api_log', {
+            type: 'poll',
+            taskId,
+            message: `Next poll in ${Math.round(delay/1000)}s at ${nextPollTime.toISOString()}`,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    // Clean up polling for a task
+    cleanupPolling(taskId) {
+        const pollingContext = this.pollingIntervals.get(taskId);
+        if (!pollingContext) return;
+        
+        // Clear the interval/timeout
+        if (pollingContext.interval) {
+            clearTimeout(pollingContext.interval);
+        }
+        
+        // Remove from tracking
+        this.pollingIntervals.delete(taskId);
     }
 
     // Handle polling response
     handlePollingResponse(data, socket, taskId) {
-        const { status, errorMessage, errorCode } = data.data;
-        const tracks = (data.data.response && data.data.response.sunoData) ? data.data.response.sunoData : [];
+        const { status, errorMessage, errorCode } = data.data || {};
+        const tracks = (data.data?.response?.sunoData) ? data.data.response.sunoData : [];
+        const timestamp = new Date().toISOString();
+        
+        // Prepare update object
+        const update = {
+            taskId,
+            status,
+            tracks,
+            errorMessage,
+            errorCode,
+            timestamp
+        };
 
-        if (this.isFatalError(status)) {
-            // Fatal error - stop polling
-            socket.emit('api_log', { 
-                type: 'error', 
-                code: errorCode || 500, 
-                msg: errorMessage || status 
-            });
-            socket.emit('task_update', { taskId, status, tracks, errorMessage });
-            return false; // Stop polling
+        // Log the update
+        socket.emit('api_log', { 
+            type: 'poll', 
+            taskId,
+            status,
+            timestamp,
+            data: data.data
+        });
+        
+        // Handle different statuses
+        switch (status) {
+            case 'SUCCESS':
+                socket.emit('task_complete', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+                
+            case 'FAILED':
+            case 'ERROR':
+                update.error = errorMessage || 'Произошла ошибка при обработке задачи';
+                update.code = errorCode || 'TASK_FAILED';
+                socket.emit('task_failed', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+                
+            case 'PROCESSING':
+            case 'PENDING':
+            case 'QUEUED':
+                // Continue polling for these statuses
+                socket.emit('task_update', update);
+                return true;
+                
+            default:
+                // For any other status, log and continue polling
+                console.warn(`[Polling] Unknown status '${status}' for task ${taskId}`);
+                socket.emit('task_update', update);
+                return true;
         }
-
-        // Normal update
-        socket.emit('api_log', { type: 'poll', data: data });
-        socket.emit('task_update', { taskId, status, tracks, errorMessage });
-
-        // Stop polling on success
-        return status !== 'SUCCESS';
     }
 
     // Check if error is fatal
     isFatalError(status) {
-        return this.FATAL_ERRORS.some(error => 
-            status.includes(error) || status === error
+        if (!status) return false;
+        return FATAL_ERRORS.some(error => 
+            status.toString().includes(error) || status === error
         );
     }
 
@@ -83,14 +218,14 @@ class PollingService {
         const socketIntervals = Array.from(this.pollingIntervals.entries())
             .filter(([taskId, intervalData]) => intervalData.socketId === socketId);
             
-        socketIntervals.forEach(([taskId, intervalData]) => {
-            clearInterval(intervalData.interval);
-            this.pollingIntervals.delete(taskId);
+        socketIntervals.forEach(([taskId]) => {
+            this.cleanupPolling(taskId);
         });
     }
-
+    
     // Get polling statistics
     getPollingStats() {
+        const now = Date.now();
         const stats = {
             activePollingTasks: this.pollingIntervals.size,
             tasks: []
@@ -100,7 +235,10 @@ class PollingService {
             stats.tasks.push({
                 taskId,
                 socketId: intervalData.socketId,
-                duration: Date.now() - intervalData.startTime
+                duration: Math.round((now - intervalData.startTime) / 1000) + 's',
+                pollCount: intervalData.pollCount,
+                lastPoll: intervalData.lastPollTime ? 
+                    Math.round((now - intervalData.lastPollTime) / 1000) + 's ago' : 'Never'
             });
         }
 

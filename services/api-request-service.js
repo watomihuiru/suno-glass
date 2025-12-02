@@ -1,5 +1,12 @@
 // API request service module
 const fetch = require('node-fetch');
+const { 
+    ERROR_CODES, 
+    FATAL_ERRORS, 
+    MAX_RETRIES, 
+    RETRY_DELAY,
+    REQUEST_TIMEOUT
+} = require('./error-codes');
 
 class ApiRequestService {
     constructor() {
@@ -14,23 +21,91 @@ class ApiRequestService {
         }
     }
 
-    // Make API request
-    async makeRequest(url, payload) {
+    // Make API request with retry logic
+    async makeRequest(url, payload, retryCount = 0) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
         try {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: controller.signal
             });
             
-            return await response.json();
+            clearTimeout(timeoutId);
+
+            // Handle non-OK responses
+            if (!response.ok) {
+                const error = new Error(`HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                error.response = await response.json().catch(() => ({}));
+                throw error;
+            }
+
+            const data = await response.json();
+            
+            // Handle API-level errors
+            if (data.code && data.code !== 200) {
+                const error = new Error(data.msg || ERROR_CODES[data.code] || 'API Error');
+                error.code = data.code;
+                error.details = data.details;
+                throw error;
+            }
+            
+            return data;
+            
         } catch (error) {
-            console.error('API request error:', error);
-            throw new Error('Network Error: ' + error.message);
+            clearTimeout(timeoutId);
+            
+            // Handle timeout
+            if (error.name === 'AbortError') {
+                error.message = 'Превышено время ожидания ответа от сервера';
+                error.code = 'REQUEST_TIMEOUT';
+            }
+            
+            // Handle rate limiting
+            if (error.status === 429) {
+                const retryAfter = error.response?.retryAfter || 60;
+                error.retryAfter = retryAfter;
+                error.message = `Превышен лимит запросов. Повторите через ${retryAfter} секунд.`;
+            }
+            
+            // Add more context to the error
+            error.url = url;
+            error.payload = payload;
+            
+            // Retry logic for retryable errors
+            const isRetryable = this.isRetryableError(error) && retryCount < MAX_RETRIES;
+            if (isRetryable) {
+                const delay = RETRY_DELAY * Math.pow(2, retryCount);
+                console.warn(`Retry ${retryCount + 1}/${MAX_RETRIES} after ${delay}ms: ${error.message}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.makeRequest(url, payload, retryCount + 1);
+            }
+            
+            throw error;
         }
+    }
+    
+    // Check if error is retryable
+    isRetryableError(error) {
+        // Don't retry on 4xx errors except 429
+        if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+            return false;
+        }
+        
+        // Don't retry on fatal errors
+        if (FATAL_ERRORS.includes(error.code)) {
+            return false;
+        }
+        
+        return true;
     }
 
     // Handle API request with logging
@@ -55,16 +130,53 @@ class ApiRequestService {
 
     // Get task status
     async getTaskStatus(taskId) {
+        if (!taskId) {
+            const error = new Error('Не указан ID задачи');
+            error.code = 'INVALID_TASK_ID';
+            throw error;
+        }
+        
+        const url = new URL(`${this.baseUrl}/generate/record-info`);
+        url.searchParams.append('taskId', taskId);
+        
         try {
-            const response = await fetch(`${this.baseUrl}/generate/record-info?taskId=${taskId}`, {
+            const response = await fetch(url, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${this.apiKey}` }
+                headers: { 
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Accept': 'application/json'
+                }
             });
             
-            return await response.json();
+            if (!response.ok) {
+                const error = new Error(`HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            
+            const data = await response.json();
+            
+            // Handle task not found
+            if (data.code === 404) {
+                const error = new Error('Задача не найдена');
+                error.code = 'TASK_NOT_FOUND';
+                error.taskId = taskId;
+                throw error;
+            }
+            
+            return data;
+            
         } catch (error) {
             console.error('Task status error:', error);
-            throw new Error('Failed to get task status');
+            
+            // Add more context to the error
+            error.taskId = taskId;
+            
+            if (!error.code) {
+                error.code = 'TASK_STATUS_ERROR';
+            }
+            
+            throw error;
         }
     }
 
@@ -73,43 +185,82 @@ class ApiRequestService {
         try {
             const response = await fetch(`${this.baseUrl}/chat/credit`, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${this.apiKey}` }
+                headers: { 
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Accept': 'application/json'
+                }
             });
+            
+            if (!response.ok) {
+                const error = new Error(`HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
             
             const result = await response.json();
             
             if (result.code === 200) {
-                // API returns data as number (remaining credit quantity)
-                return result.data; // This should be a number
+                return result.data; // Should be a number (remaining credit quantity)
             } else {
-                throw new Error(`Credits check failed: ${result.msg || 'Unknown error'}`);
+                const error = new Error(ERROR_CODES[result.code] || result.msg || 'Не удалось получить информацию о кредитах');
+                error.code = result.code || 'CREDITS_ERROR';
+                error.details = result.details;
+                throw error;
             }
         } catch (error) {
+            console.error('Credits check error:', error);
+            
+            if (!error.code) {
+                error.code = 'CREDITS_CHECK_ERROR';
+            }
+            
             throw error;
         }
     }
 
     // Get download URL for file
     async getDownloadUrl(fileUrl) {
+        if (!fileUrl) {
+            const error = new Error('Не указан URL файла для загрузки');
+            error.code = 'INVALID_FILE_URL';
+            throw error;
+        }
+        
         try {
             const response = await fetch(`${this.baseUrl}/common/download-url`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ url: fileUrl })
             });
+            
+            if (!response.ok) {
+                const error = new Error(`HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
             
             const result = await response.json();
             
             if (result.code === 200) {
                 return result.data;
             } else {
-                throw new Error(`Download URL failed: ${result.msg || 'Unknown error'}`);
+                const error = new Error(ERROR_CODES[result.code] || result.msg || 'Не удалось получить URL для загрузки');
+                error.code = result.code || 'DOWNLOAD_URL_ERROR';
+                error.details = result.details;
+                throw error;
             }
         } catch (error) {
             console.error('Download URL error:', error);
+            
+            if (!error.code) {
+                error.code = 'DOWNLOAD_ERROR';
+            }
+            
+            error.fileUrl = fileUrl;
             throw error;
         }
     }

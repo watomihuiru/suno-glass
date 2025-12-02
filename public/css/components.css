@@ -8,6 +8,11 @@
     margin-bottom: 25px;
 }
 
+.input-wrapper input,
+.input-wrapper textarea {
+    pointer-events: auto;
+}
+
 .label-row {
     display: flex;
     justify-content: space-between;
@@ -34,6 +39,7 @@
     padding: 2px 6px;
     border-radius: 4px;
     pointer-events: none;
+    z-index: 1;
 }
 
 input[type="text"],
@@ -54,7 +60,6 @@ textarea {
 
 input[type="text"]:focus,
 textarea:focus {
-    border-color: var(--accent-color);
     background: rgba(0, 0, 0, 0.4);
     transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
@@ -62,9 +67,56 @@ textarea:focus {
 
 textarea {
     height: 120px;
-    resize: none;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    resize: vertical;
+    min-height: 120px;
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
     scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.4) rgba(0, 0, 0, 0.2);
+}
+
+textarea::-webkit-scrollbar {
+    width: 12px;
+}
+
+textarea::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 6px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    min-height: 20px;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+textarea:hover::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+textarea::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+textarea::-webkit-resizer {
+    background: linear-gradient(135deg, transparent 35%, rgba(255, 255, 255, 0.3) 35%, rgba(255, 255, 255, 0.3) 65%, transparent 65%);
+    border-radius: 0 0 8px 0;
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+textarea::-webkit-resizer:hover {
+    opacity: 1;
+    background: linear-gradient(135deg, transparent 35%, rgba(255, 255, 255, 0.5) 35%, rgba(255, 255, 255, 0.5) 65%, transparent 65%);
 }
 
 .glass-select {
@@ -333,6 +385,13 @@ textarea {
 #coverPromptContainer > *,
 #extendPromptContainer > * {
     overflow: hidden;
+}
+
+/* Ensure textareas inside prompt containers can scroll their content */
+#promptContainer textarea,
+#coverPromptContainer textarea,
+#extendPromptContainer textarea {
+    overflow-y: auto;
 }
 
 .settings-grid {

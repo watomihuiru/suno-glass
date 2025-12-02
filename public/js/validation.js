@@ -1,3 +1,27 @@
+const ADVANCED_FIELD_IDS = {
+    generate: {
+        negativeTags: 'negativeTags',
+        styleWeight: 'genStyleWeight',
+        audioWeight: 'genAudioWeight',
+        weirdness: 'genWeirdness',
+        vocalGender: 'vocalGender'
+    },
+    cover: {
+        negativeTags: 'coverNegativeTags',
+        styleWeight: 'styleWeight',
+        audioWeight: 'audioWeight',
+        weirdness: 'weirdness',
+        vocalGender: 'coverVocalGender'
+    },
+    extend: {
+        negativeTags: 'extendNegativeTags',
+        styleWeight: 'extendStyleWeight',
+        audioWeight: 'extendAudioWeight',
+        weirdness: 'extendWeirdness',
+        vocalGender: 'extendVocalGender'
+    }
+};
+
 // Validation utilities for form handling
 const ValidationUtils = {
     // Model limits configuration
@@ -141,30 +165,48 @@ const ValidationUtils = {
 
     // Add optional advanced parameters to payload
     addAdvancedParams(payload, mode = 'generate') {
-        const prefix = mode === 'generate' ? 'gen' : mode;
+        const ids = ADVANCED_FIELD_IDS[mode] || ADVANCED_FIELD_IDS.generate;
+        const isCustom = Boolean(payload.customMode ?? payload.defaultParamFlag);
+        const isInstrumental = Boolean(payload.instrumental);
+
+        const getTrimmedValue = (id) => {
+            const element = document.getElementById(id);
+            return element && typeof element.value === 'string' ? element.value.trim() : '';
+        };
+
+        const pickSliderValue = (id) => {
+            const element = document.getElementById(id);
+            if (!element || element.dataset?.touched !== 'true') return null;
+            const parsed = parseFloat(element.value);
+            return Number.isNaN(parsed) ? null : parsed;
+        };
         
-        // Negative tags
-        const negTagsField = document.getElementById(`${prefix}NegativeTags`);
-        const negTags = negTagsField ? negTagsField.value.trim() : '';
-        if (negTags) payload.negativeTags = negTags;
+        const negTags = getTrimmedValue(ids.negativeTags);
+        if (negTags) {
+            payload.negativeTags = negTags;
+        }
         
-        // Style weight
-        const sw = document.getElementById(`${prefix}StyleWeight`);
-        if (sw && sw.dataset.touched === "true") payload.styleWeight = parseFloat(sw.value);
+        const styleWeight = pickSliderValue(ids.styleWeight);
+        if (styleWeight !== null) {
+            payload.styleWeight = styleWeight;
+        }
         
-        // Audio weight
-        const aw = document.getElementById(`${prefix}AudioWeight`);
-        if (aw && aw.dataset.touched === "true") payload.audioWeight = parseFloat(aw.value);
+        const audioWeight = pickSliderValue(ids.audioWeight);
+        if (audioWeight !== null) {
+            payload.audioWeight = audioWeight;
+        }
         
-        // Weirdness
-        const wd = document.getElementById(`${prefix}Weirdness`);
-        if (wd && wd.dataset.touched === "true") payload.weirdnessConstraint = parseFloat(wd.value);
+        const weirdness = pickSliderValue(ids.weirdness);
+        if (weirdness !== null) {
+            payload.weirdnessConstraint = weirdness;
+        }
         
-        // Vocal gender for custom mode with vocals
-        if (isCustom && !isInstrumental) {
-            const genderField = document.getElementById(`${prefix}VocalGender`);
+        if (isCustom && !isInstrumental && ids.vocalGender) {
+            const genderField = document.getElementById(ids.vocalGender);
             const gender = genderField ? genderField.value : '';
-            if (gender) payload.vocalGender = gender;
+            if (gender) {
+                payload.vocalGender = gender;
+            }
         }
         
         return payload;

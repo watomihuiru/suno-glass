@@ -1,3 +1,59 @@
+// Global State
+const socket = io();
+let library = []; 
+let currentTrackId = null; 
+let isPlaying = false;
+let progressTimers = {}; 
+let pendingTempTracks = [];
+let isShuffle = false;
+let isLoop = false;
+
+// Limits Config
+const MODEL_LIMITS = {
+    'V3_5': { prompt: 3000, style: 200 },
+    'V4': { prompt: 3000, style: 200 },
+    'V4_5': { prompt: 5000, style: 1000 },
+    'V4_5PLUS': { prompt: 5000, style: 1000 },
+    'V5': { prompt: 5000, style: 1000 }
+};
+
+function loadLibrary() {
+    try {
+        const stored = localStorage.getItem('suno_library');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+                library = parsed;
+                renderLibrary();
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load library", e);
+    }
+}
+
+function saveLibrary() {
+    localStorage.setItem('suno_library', JSON.stringify(library));
+}
+
+function getDisplayModelName(rawName) {
+    if (!rawName) return 'AI';
+    const lower = rawName.toLowerCase();
+    if (lower.includes('v5')) return 'v5';
+    // Check for v4_5plus or v4_5_plus before v4_5 to avoid matching v4_5 first
+    if (lower.includes('v4_5plus') || lower.includes('v4_5_plus') || lower.includes('v4.5+')) return 'v4.5+';
+    if (lower.includes('v4_5') || lower.includes('v4.5')) return 'v4.5';
+    if (lower.includes('v4')) return 'v4';
+    if (lower.includes('v3_5') || lower.includes('v3.5')) return 'v3.5';
+    return rawName;
+}
+
+function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sc = Math.floor(s % 60);
+    return `${m}:${sc < 10 ? '0' : ''}${sc}`;
+}
+
 // Configuration management for the Suno AI application
 const AppConfig = {
     // Model limits configuration
@@ -46,7 +102,7 @@ const AppConfig = {
     // Polling configuration
     POLLING: {
         INTERVAL_MS: 8000,
-        MAX_ATTEMPTS: 60, // 8 minutes with 8-second intervals
+        MAX_ATTEMPTS: 60, // 8 минут с интервалом 8 секунд
         FATAL_ERRORS: [
             'FAILED',
             'SENSITIVE_WORD_ERROR',
@@ -117,7 +173,7 @@ const AppConfig = {
     }
 };
 
-// Export for use in other modules
+// Export for Node.js (если запускается в среде CommonJS)
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AppConfig;
+    module.exports = { AppConfig, getDisplayModelName, formatTime };
 }

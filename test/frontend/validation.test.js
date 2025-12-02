@@ -373,5 +373,61 @@ describe('ValidationUtils', () => {
             expect(payload.prompt).toBe('Instrumental description');
         });
     });
+
+    describe('addAdvancedParams', () => {
+        afterEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        it('should copy advanced settings for generate mode', () => {
+            document.body.innerHTML = `
+                <input id="negativeTags" value="no drums">
+                <input id="genStyleWeight" data-touched="true" value="0.8">
+                <input id="genAudioWeight" data-touched="true" value="0.6">
+                <input id="genWeirdness" data-touched="true" value="0.2">
+                <input id="vocalGender" type="hidden" value="f">
+            `;
+
+            const payload = {
+                customMode: true,
+                instrumental: false
+            };
+
+            const result = ValidationUtils.addAdvancedParams(payload, 'generate');
+
+            expect(result).toMatchObject({
+                negativeTags: 'no drums',
+                styleWeight: 0.8,
+                audioWeight: 0.6,
+                weirdnessConstraint: 0.2,
+                vocalGender: 'f'
+            });
+        });
+
+        it('should respect mode-specific field ids and skip untouched sliders', () => {
+            document.body.innerHTML = `
+                <input id="coverNegativeTags" value="no bass">
+                <input id="styleWeight" data-touched="false" value="0.5">
+                <input id="audioWeight" data-touched="true" value="0.45">
+                <input id="weirdness" value="0.3">
+                <input id="coverVocalGender" type="hidden" value="m">
+            `;
+
+            const payload = {
+                customMode: false,
+                instrumental: true
+            };
+
+            const result = ValidationUtils.addAdvancedParams(payload, 'cover');
+
+            expect(result).toMatchObject({
+                negativeTags: 'no bass',
+                audioWeight: 0.45
+            });
+            expect(result).not.toHaveProperty('styleWeight');
+            expect(result).not.toHaveProperty('weirdnessConstraint');
+            expect(result).not.toHaveProperty('vocalGender');
+        });
+    });
 });
 

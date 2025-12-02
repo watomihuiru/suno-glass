@@ -145,7 +145,9 @@ describe('ApiRequestService', () => {
 
             expect(result).toEqual(mockResponse);
             const fetchCall = mockedFetch.mock.calls[0];
-            expect(fetchCall[0]).toContain('taskId=test-task-123');
+            // Check that URL contains the taskId parameter (convert to string if it's a URL object)
+            const urlString = typeof fetchCall[0] === 'string' ? fetchCall[0] : fetchCall[0].toString();
+            expect(urlString).toContain('taskId=test-task-123');
             expect(fetchCall[1]).toMatchObject({
                 method: 'GET',
                 headers: expect.objectContaining({

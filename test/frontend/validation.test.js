@@ -79,7 +79,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors[0]).toContain('Song description is required');
+            expect(errors[0]).toContain('Требуется описание песни в простом режиме');
         });
 
         it('should validate custom mode form successfully', () => {
@@ -108,7 +108,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('Title is required'))).toBe(true);
+            expect(errors.some(e => e.includes('название') || e.includes('Title'))).toBe(true);
         });
 
         it('should require style in custom mode', () => {
@@ -123,7 +123,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('Style is required'))).toBe(true);
+            expect(errors.some(e => e.includes('стиль') || e.includes('Style'))).toBe(true);
         });
 
         it('should require lyrics when vocals enabled in custom mode', () => {
@@ -138,7 +138,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('Lyrics are required'))).toBe(true);
+            expect(errors.some(e => e.includes('Текст песни') || e.includes('Lyrics'))).toBe(true);
         });
 
         it('should validate prompt length limits', () => {
@@ -153,7 +153,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('exceeds'))).toBe(true);
+            expect(errors.some(e => e.includes('превышает') || e.includes('exceeds'))).toBe(true);
         });
 
         it('should validate title length limits', () => {
@@ -168,7 +168,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('Title') && e.includes('characters'))).toBe(true);
+            expect(errors.some(e => (e.includes('Название') || e.includes('Title')) && (e.includes('символов') || e.includes('characters')))).toBe(true);
         });
 
         it('should validate style length limits', () => {
@@ -183,7 +183,7 @@ describe('ValidationUtils', () => {
 
             const errors = ValidationUtils.validateForm(formData, 'generate');
             expect(errors.length).toBeGreaterThan(0);
-            expect(errors.some(e => e.includes('Style') && e.includes('exceeds'))).toBe(true);
+            expect(errors.some(e => (e.includes('Стиль') || e.includes('Style')) && (e.includes('превышает') || e.includes('exceeds')))).toBe(true);
         });
     });
 

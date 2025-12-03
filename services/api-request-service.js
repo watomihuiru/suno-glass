@@ -227,6 +227,11 @@ class ApiRequestService {
         }
         
         try {
+            // If URL is already a direct KIE music file URL, return it as is
+            if (typeof fileUrl === 'string' && fileUrl.startsWith('https://musicfile.kie.ai/')) {
+                return fileUrl;
+            }
+
             const response = await fetch(`${this.baseUrl}/common/download-url`, {
                 method: 'POST',
                 headers: {

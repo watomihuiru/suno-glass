@@ -260,9 +260,13 @@ class SocketHandlers {
             throw error;
         }
         
-        const downloadUrl = await this.apiRequestService.getDownloadUrl(fileUrl);
+        const directUrl = await this.apiRequestService.getDownloadUrl(fileUrl);
+
+        // Wrap direct URL with local download proxy to enforce attachment download
+        const proxyUrl = `/download?url=${encodeURIComponent(directUrl)}`;
+
         socket.emit('download_url_ready', { 
-            downloadUrl, 
+            downloadUrl: proxyUrl, 
             trackId,
             timestamp: new Date().toISOString()
         });

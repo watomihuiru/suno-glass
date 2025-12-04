@@ -393,3 +393,8 @@ document.querySelectorAll('input[name="extendCustomMode"], input[name="extendIns
 });
 updateExtendUI();
 updateInputLimits();
+
+// Initialize gender toggles
+setupGenderToggle('genGenderOptions', 'vocalGender');
+setupGenderToggle('extGenderOptions', 'extendVocalGender');
+setupGenderToggle('covGenderOptions', 'coverVocalGender');

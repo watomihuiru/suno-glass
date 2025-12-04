@@ -1,8 +1,8 @@
 // --- LOGS ---
 const jsonOutput = document.getElementById('jsonOutput');
 
-document.getElementById('clearLogsBtn').addEventListener('click', () => { 
-    jsonOutput.innerHTML = '<div class="log-entry info">Logs cleared.</div>'; 
+document.getElementById('clearLogsBtn').addEventListener('click', () => {
+    jsonOutput.innerHTML = '<div class="log-entry info">Logs cleared.</div>';
 });
 
 // --- INLINE NOTIFICATIONS ---
@@ -112,13 +112,13 @@ window.showNotification = showNotification;
 window.clearNotification = clearNotification;
 
 function logApi(msg) {
-    if(jsonOutput.querySelector('.info')) jsonOutput.innerHTML = '';
-    
-    const entry = document.createElement('div'); 
+    if (jsonOutput.querySelector('.info')) jsonOutput.innerHTML = '';
+
+    const entry = document.createElement('div');
     entry.className = 'log-entry';
-    
+
     const ts = new Date().toLocaleTimeString();
-    
+
     // Специальная обработка для ОШИБОК
     if (msg.type === 'error') {
         entry.innerHTML = `
@@ -126,19 +126,34 @@ function logApi(msg) {
             <span class="log-type err">ERROR ${msg.code || ''}</span>
             <div class="error-text">${msg.msg}</div>
         `;
+    } else if (msg.type === 'info') {
+        // Обработка информационных сообщений (например, обновление кредитов)
+        entry.innerHTML = `
+            <div class="log-timestamp">[${ts}]</div>
+            <span class="log-type req">INFO</span>
+            <div class="json-code">${msg.msg || msg.message || ''}</div>
+        `;
     } else {
         // Стандартная обработка (Request, Response, Poll)
         let cls = 'req', txt = 'REQUEST';
-        if(msg.type === 'response') { cls = 'res'; txt = 'RESPONSE'; } 
-        if(msg.type === 'poll') { cls = 'poll'; txt = 'POLLING'; }
-        
+        if (msg.type === 'response') { cls = 'res'; txt = 'RESPONSE'; }
+        if (msg.type === 'poll') { cls = 'poll'; txt = 'POLLING'; }
+
+        // Определяем контент: data, message, или пустая строка
+        let content = '';
+        if (msg.data !== undefined) {
+            content = JSON.stringify(msg.data, null, 2);
+        } else if (msg.message !== undefined) {
+            content = msg.message;
+        }
+
         entry.innerHTML = `
             <div class="log-timestamp">[${ts}]</div>
             <span class="log-type ${cls}">${txt}</span>
-            <div class="json-code">${JSON.stringify(msg.data, null, 2)}</div>
+            <div class="json-code">${content}</div>
         `;
     }
-    
+
     jsonOutput.prepend(entry);
 }
 
@@ -146,7 +161,7 @@ function logApi(msg) {
 document.querySelectorAll('.menu li').forEach(item => {
     item.addEventListener('click', () => {
         const tabId = item.getAttribute('data-tab');
-        if (!tabId) return; 
+        if (!tabId) return;
         document.querySelectorAll('.menu li').forEach(i => i.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
         item.classList.add('active');
@@ -184,15 +199,15 @@ function updateCounter(input, counterElement) {
     counterElement.innerText = `${input.value.length} / ${input.maxLength}`;
 }
 
-if(genPrompt) genPrompt.addEventListener('input', () => updateCounter(genPrompt, genPromptCnt));
-if(genStyle) genStyle.addEventListener('input', () => updateCounter(genStyle, genStyleCnt));
-if(genTitle) genTitle.addEventListener('input', () => updateCounter(genTitle, genTitleCnt));
-if(covPrompt) covPrompt.addEventListener('input', () => updateCounter(covPrompt, covPromptCnt));
-if(covStyle) covStyle.addEventListener('input', () => updateCounter(covStyle, covStyleCnt));
-if(covTitle) covTitle.addEventListener('input', () => updateCounter(covTitle, covTitleCnt));
-if(extPrompt) extPrompt.addEventListener('input', () => updateCounter(extPrompt, extPromptCnt));
-if(extStyle) extStyle.addEventListener('input', () => updateCounter(extStyle, extStyleCnt));
-if(extTitle) extTitle.addEventListener('input', () => updateCounter(extTitle, extTitleCnt));
+if (genPrompt) genPrompt.addEventListener('input', () => updateCounter(genPrompt, genPromptCnt));
+if (genStyle) genStyle.addEventListener('input', () => updateCounter(genStyle, genStyleCnt));
+if (genTitle) genTitle.addEventListener('input', () => updateCounter(genTitle, genTitleCnt));
+if (covPrompt) covPrompt.addEventListener('input', () => updateCounter(covPrompt, covPromptCnt));
+if (covStyle) covStyle.addEventListener('input', () => updateCounter(covStyle, covStyleCnt));
+if (covTitle) covTitle.addEventListener('input', () => updateCounter(covTitle, covTitleCnt));
+if (extPrompt) extPrompt.addEventListener('input', () => updateCounter(extPrompt, extPromptCnt));
+if (extStyle) extStyle.addEventListener('input', () => updateCounter(extStyle, extStyleCnt));
+if (extTitle) extTitle.addEventListener('input', () => updateCounter(extTitle, extTitleCnt));
 
 function updateInputLimits() {
     const genModelBtn = document.querySelector('input[name="model"]:checked');
@@ -228,14 +243,14 @@ function updateSliderVisual(slider) {
     const max = parseFloat(slider.max) || 1;
     let percent = 0;
     if (max > min) percent = ((val - min) / (max - min)) * 100;
-    if(percent < 0) percent = 0; if(percent > 100) percent = 100;
+    if (percent < 0) percent = 0; if (percent > 100) percent = 100;
     slider.style.setProperty('--val-percent', `${percent}%`);
 }
 
 function setupAdvancedSliders(ids) {
     ids.forEach(id => {
         const slider = document.getElementById(id);
-        if(!slider) return;
+        if (!slider) return;
         slider.value = 0; slider.dataset.touched = "false"; slider.style.setProperty('--val-percent', '0%');
         slider.addEventListener('input', (e) => {
             slider.dataset.touched = "true";
@@ -278,13 +293,13 @@ function isDirty(tagId, genderId, sliderIds) {
 }
 
 function resetAdvanced(tagId, genderContainerId, genderInputId, sliderIds, btnId) {
-    const tag = document.getElementById(tagId); if(tag) tag.value = "";
-    const genderInput = document.getElementById(genderInputId); if(genderInput) genderInput.value = "";
+    const tag = document.getElementById(tagId); if (tag) tag.value = "";
+    const genderInput = document.getElementById(genderInputId); if (genderInput) genderInput.value = "";
     const genderOpts = document.getElementById(genderContainerId).querySelectorAll('.gender-option');
     genderOpts.forEach(o => o.classList.remove('active'));
     sliderIds.forEach(id => {
         const sl = document.getElementById(id);
-        if(sl) { sl.value = 0; sl.dataset.touched = "false"; updateSliderVisual(sl); }
+        if (sl) { sl.value = 0; sl.dataset.touched = "false"; updateSliderVisual(sl); }
     });
     document.getElementById(btnId).classList.remove('visible');
 }
@@ -313,7 +328,7 @@ function setupGenderToggle(groupId, hiddenInputId) {
             checkAdvancedState();
         });
     });
-} // Added closing bracket here
+}
 
 function setupNativeValidationNotifications() {
     // Native HTML5 validation is disabled via form.noValidate,
@@ -335,8 +350,8 @@ function updateGenUI() {
     const isInst = instrumentalChecked && instrumentalChecked.value === 'true';
     if (isCustom) {
         customFields.classList.remove('hidden');
-        if (isInst) { promptContainer.classList.add('hidden'); if(vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); } 
-        else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; genPrompt.placeholder = "[Verse 1]..."; if(vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); }
+        if (isInst) { promptContainer.classList.add('hidden'); if (vocalGenderGroup) vocalGenderGroup.classList.add('hidden'); }
+        else { promptContainer.classList.remove('hidden'); promptLabel.innerText = "Lyrics"; genPrompt.placeholder = "[Verse 1]..."; if (vocalGenderGroup) vocalGenderGroup.classList.remove('hidden'); }
     } else {
         customFields.classList.add('hidden'); promptContainer.classList.remove('hidden'); promptLabel.innerText = "Song Description"; genPrompt.placeholder = "A futuristic synthwave track...";
     }
@@ -359,8 +374,8 @@ function updateCoverUI() {
     const isInst = coverInstrumentalChecked && coverInstrumentalChecked.value === 'true';
     if (isCustom) {
         coverCustomFields.classList.remove('hidden');
-        if (isInst) { coverPromptContainer.classList.add('hidden'); if(coverVocalGenderGroup) coverVocalGenderGroup.classList.add('hidden'); } 
-        else { coverPromptContainer.classList.remove('hidden'); coverPromptLabel.innerText = "Lyrics"; if(coverVocalGenderGroup) coverVocalGenderGroup.classList.remove('hidden'); }
+        if (isInst) { coverPromptContainer.classList.add('hidden'); if (coverVocalGenderGroup) coverVocalGenderGroup.classList.add('hidden'); }
+        else { coverPromptContainer.classList.remove('hidden'); coverPromptLabel.innerText = "Lyrics"; if (coverVocalGenderGroup) coverVocalGenderGroup.classList.remove('hidden'); }
     } else {
         coverCustomFields.classList.add('hidden'); coverPromptContainer.classList.remove('hidden'); coverPromptLabel.innerText = "Song Description";
     }
@@ -382,8 +397,8 @@ function updateExtendUI() {
     const isInst = extendInstrumentalChecked && extendInstrumentalChecked.value === 'true';
     if (isCustom) {
         extendCustomFields.classList.remove('hidden');
-        if (isInst) { extendPromptContainer.classList.add('hidden'); if(extendVocalGenderGroup) extendVocalGenderGroup.classList.add('hidden'); } 
-        else { extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description"; if(extendVocalGenderGroup) extendVocalGenderGroup.classList.remove('hidden'); }
+        if (isInst) { extendPromptContainer.classList.add('hidden'); if (extendVocalGenderGroup) extendVocalGenderGroup.classList.add('hidden'); }
+        else { extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description"; if (extendVocalGenderGroup) extendVocalGenderGroup.classList.remove('hidden'); }
     } else {
         extendCustomFields.classList.add('hidden'); extendPromptContainer.classList.remove('hidden'); extendPromptLabel.innerText = "Extension Description";
     }

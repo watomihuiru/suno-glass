@@ -17,7 +17,7 @@ const CreditsManager = {
     init() {
         this.cacheElements();
         this.bindEvents();
-        
+
         // Request initial credits check
         this.requestCreditsUpdate();
     },
@@ -79,12 +79,12 @@ const CreditsManager = {
     // Request credits update from server
     requestCreditsUpdate() {
         this.setLoadingState();
-        
+
         if (typeof socket === 'undefined') {
             this.showError('Socket not available');
             return;
         }
-        
+
         socket.emit('get_credits');
     },
 
@@ -95,10 +95,10 @@ const CreditsManager = {
         if (typeof credits === 'object' && credits !== null) {
             creditValue = credits.credits || credits.quantity || credits.data || 0;
         }
-        
+
         // Ensure we have a number
         creditValue = parseInt(creditValue) || 0;
-        
+
         this.currentCredits = creditValue;
         this.lastUpdate = timestamp;
 
@@ -108,20 +108,13 @@ const CreditsManager = {
         // Update status based on credit amount
         this.updateCreditStatus(creditValue);
 
-        // Log to API logs
-        if (window.logApi) {
-            logApi({
-                type: 'info',
-                msg: `Credits updated: ${creditValue} available`,
-                timestamp: timestamp || new Date().toISOString()
-            });
-        }
+
     },
 
     // Update credit status styling and text
     updateCreditStatus(credits) {
         const statusEl = this.elements.creditsStatus;
-        
+
         if (credits === 0) {
             statusEl.className = 'credits-status error';
             statusEl.innerHTML = `

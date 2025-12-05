@@ -1,5 +1,5 @@
 // Polling service module
-const { 
+const {
     FATAL_ERRORS,
     REQUEST_TIMEOUT
 } = require('./error-codes');
@@ -22,27 +22,27 @@ class PollingService {
         const startTime = Date.now();
         let pollCount = 0;
         let isPolling = true;
-        
+
         const poll = async () => {
             if (!isPolling) return;
-            
+
             try {
                 pollCount++;
-                
+
                 // Check if max attempts or timeout reached
-                if (pollCount > this.MAX_POLLING_ATTEMPTS || 
+                if (pollCount > this.MAX_POLLING_ATTEMPTS ||
                     (Date.now() - startTime) > this.POLLING_TIMEOUT) {
-                    
+
                     const error = new Error('Превышено время ожидания выполнения задачи');
                     error.code = 'POLLING_TIMEOUT';
                     error.taskId = taskId;
-                    
+
                     // Stop polling immediately
                     isPolling = false;
-                    
+
                     // Clean up before emitting the error
                     this.cleanupPolling(taskId);
-                    
+
                     // Emit the error
                     socket.emit('task_error', {
                         taskId,
@@ -50,34 +50,34 @@ class PollingService {
                         message: error.message,
                         timestamp: new Date().toISOString()
                     });
-                    
+
                     // Don't throw, just return to stop further execution
                     return;
                 }
-                
+
                 // Get task status
                 const data = await apiRequestService.getTaskStatus(taskId);
-                
+
                 // Process the response
                 const shouldContinue = this.handlePollingResponse(data, socket, taskId);
-                
+
                 // Stop polling if task is complete or failed
                 if (!shouldContinue) {
                     isPolling = false;
                     this.cleanupPolling(taskId);
                     return;
                 }
-                
+
                 // Schedule next poll if still polling
                 if (isPolling) {
                     this.scheduleNextPoll(taskId, socket, poll);
                 }
-                
+
             } catch (error) {
                 if (!isPolling) return;
-                
+
                 console.error(`[Polling Error] Task ${taskId}:`, error);
-                
+
                 // Emit error to client
                 socket.emit('task_error', {
                     taskId,
@@ -86,13 +86,13 @@ class PollingService {
                     details: error.details,
                     timestamp: new Date().toISOString()
                 });
-                
+
                 // Clean up and stop polling
                 isPolling = false;
                 this.cleanupPolling(taskId);
             }
         };
-        
+
         // Store polling context
         this.pollingIntervals.set(taskId, {
             interval: null, // Will be set by scheduleNextPoll
@@ -101,51 +101,35 @@ class PollingService {
             pollCount: 0,
             lastPollTime: null
         });
-        
+
         // Start polling
         poll();
     }
-    
-    // Schedule the next poll with exponential backoff
+
+    // Schedule the next poll with fixed 8 second interval
     scheduleNextPoll(taskId, socket, pollFunction) {
         const pollingContext = this.pollingIntervals.get(taskId);
         if (!pollingContext) return;
-        
-        // Calculate delay with exponential backoff (capped at 30s)
-        const baseDelay = Math.min(
-            this.POLLING_INTERVAL * Math.pow(1.5, Math.floor(pollingContext.pollCount / 5)),
-            30000
-        );
-        
-        // Add jitter to prevent thundering herd
-        const jitter = Math.random() * 1000;
-        const delay = Math.floor(baseDelay + jitter);
-        
+
+        // Fixed 8 second interval
+        const delay = this.POLLING_INTERVAL;
+
         // Store the timeout ID
         pollingContext.interval = setTimeout(pollFunction, delay);
         pollingContext.lastPollTime = Date.now();
         pollingContext.pollCount++;
-        
-        // Log the next poll time
-        const nextPollTime = new Date(Date.now() + delay);
-        socket.emit('api_log', {
-            type: 'poll',
-            taskId,
-            message: `Next poll in ${Math.round(delay/1000)}s at ${nextPollTime.toISOString()}`,
-            timestamp: new Date().toISOString()
-        });
     }
-    
+
     // Clean up polling for a task
     cleanupPolling(taskId) {
         const pollingContext = this.pollingIntervals.get(taskId);
         if (!pollingContext) return;
-        
+
         // Clear the interval/timeout
         if (pollingContext.interval) {
             clearTimeout(pollingContext.interval);
         }
-        
+
         // Remove from tracking
         this.pollingIntervals.delete(taskId);
     }
@@ -155,7 +139,7 @@ class PollingService {
         const { status, errorMessage, errorCode } = data.data || {};
         const tracks = (data.data?.response?.sunoData) ? data.data.response.sunoData : [];
         const timestamp = new Date().toISOString();
-        
+
         // Prepare update object
         const update = {
             taskId,
@@ -167,37 +151,86 @@ class PollingService {
         };
 
         // Log the update
-        socket.emit('api_log', { 
-            type: 'poll', 
+        socket.emit('api_log', {
+            type: 'poll',
             taskId,
             status,
             timestamp,
             data: data.data
         });
-        
+
         // Handle different statuses
         switch (status) {
             case 'SUCCESS':
                 socket.emit('task_complete', update);
                 socket.emit('task_update', update);
                 return false; // Stop polling
-                
-            case 'FAILED':
-            case 'ERROR':
-                update.error = errorMessage || 'Произошла ошибка при обработке задачи';
-                update.code = errorCode || 'TASK_FAILED';
-                socket.emit('task_failed', update);
+
+            case 'FIRST_SUCCESS':
+                // Первый трек готов, второй ещё генерируется
+                // Отправляем обновление с частичными данными и продолжаем polling
+                socket.emit('first_track_complete', update);
+                socket.emit('task_update', update);
+                return true; // Continue polling for the second track
+
+            case 'TEXT_SUCCESS':
+                // Lyrics/text generation completed, continue waiting for audio
+                socket.emit('task_update', update);
+                return true;
+
+            // === ERROR STATUSES - Stop polling ===
+            case 'SENSITIVE_WORD_ERROR':
+                update.error = this.getErrorMessage(errorCode, errorMessage) || 'Контент отклонён из-за нарушения правил контента';
+                update.code = 'SENSITIVE_WORD_ERROR';
+                socket.emit('task_error', update);
                 socket.emit('task_update', update);
                 return false; // Stop polling
-                
+
+            case 'CREATE_TASK_FAILED':
+                update.error = this.getErrorMessage(errorCode, errorMessage) || 'Не удалось создать задачу генерации';
+                update.code = 'CREATE_TASK_FAILED';
+                socket.emit('task_error', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+
+            case 'GENERATE_AUDIO_FAILED':
+                update.error = this.getErrorMessage(errorCode, errorMessage) || 'Ошибка при генерации аудио';
+                update.code = 'GENERATE_AUDIO_FAILED';
+                socket.emit('task_error', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+
+            case 'CALLBACK_EXCEPTION':
+                update.error = this.getErrorMessage(errorCode, errorMessage) || 'Ошибка обратного вызова';
+                update.code = 'CALLBACK_EXCEPTION';
+                socket.emit('task_error', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+
+            case 'FAILED':
+            case 'ERROR':
+                update.error = this.getErrorMessage(errorCode, errorMessage) || 'Произошла ошибка при обработке задачи';
+                update.code = errorCode || 'TASK_FAILED';
+                socket.emit('task_error', update);
+                socket.emit('task_update', update);
+                return false; // Stop polling
+
             case 'PROCESSING':
             case 'PENDING':
             case 'QUEUED':
                 // Continue polling for these statuses
                 socket.emit('task_update', update);
                 return true;
-                
+
             default:
+                // Check if status contains error indicators
+                if (status && (status.includes('FAILED') || status.includes('ERROR'))) {
+                    update.error = this.getErrorMessage(errorCode, errorMessage) || `Неизвестная ошибка: ${status}`;
+                    update.code = status;
+                    socket.emit('task_error', update);
+                    socket.emit('task_update', update);
+                    return false; // Stop polling
+                }
                 // For any other status, log and continue polling
                 console.warn(`[Polling] Unknown status '${status}' for task ${taskId}`);
                 socket.emit('task_update', update);
@@ -205,10 +238,21 @@ class PollingService {
         }
     }
 
+    // Get user-friendly error message based on error code
+    getErrorMessage(errorCode, fallbackMessage) {
+        const errorMessages = {
+            400: 'Текст содержит защищённый авторским правом материал или запрещённые слова',
+            408: 'Превышено время ожидания. Сервис перегружен, попробуйте позже',
+            413: 'Загруженное аудио совпадает с существующим произведением'
+        };
+
+        return errorMessages[errorCode] || fallbackMessage || null;
+    }
+
     // Check if error is fatal
     isFatalError(status) {
         if (!status) return false;
-        return FATAL_ERRORS.some(error => 
+        return FATAL_ERRORS.some(error =>
             status.toString().includes(error) || status === error
         );
     }
@@ -217,12 +261,12 @@ class PollingService {
     cleanupSocketPolling(socketId) {
         const socketIntervals = Array.from(this.pollingIntervals.entries())
             .filter(([taskId, intervalData]) => intervalData.socketId === socketId);
-            
+
         socketIntervals.forEach(([taskId]) => {
             this.cleanupPolling(taskId);
         });
     }
-    
+
     // Get polling statistics
     getPollingStats() {
         const now = Date.now();
@@ -237,7 +281,7 @@ class PollingService {
                 socketId: intervalData.socketId,
                 duration: Math.round((now - intervalData.startTime) / 1000) + 's',
                 pollCount: intervalData.pollCount,
-                lastPoll: intervalData.lastPollTime ? 
+                lastPoll: intervalData.lastPollTime ?
                     Math.round((now - intervalData.lastPollTime) / 1000) + 's ago' : 'Never'
             });
         }

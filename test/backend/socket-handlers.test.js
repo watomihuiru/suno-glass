@@ -238,22 +238,28 @@ describe('SocketHandlers', () => {
             socketHandlers.handleConnection(mockSocket);
         });
 
-        it('should get and emit download URL', async () => {
+        it('should get and emit download URL with proxy wrapper', async () => {
             const data = {
                 fileUrl: 'https://example.com/file.mp3',
                 trackId: 'track-123'
             };
 
-            mockApiRequestService.getDownloadUrl.mockResolvedValueOnce('https://download.example.com/file.mp3');
+            const directUrl = 'https://download.example.com/file.mp3';
+            mockApiRequestService.getDownloadUrl.mockResolvedValueOnce(directUrl);
 
             const handler = mockSocket.on.mock.calls.find(call => call[0] === 'get_download_url')[1];
             await handler(data);
 
             expect(mockApiRequestService.getDownloadUrl).toHaveBeenCalledWith(data.fileUrl);
+            // The download URL is now wrapped with a proxy endpoint
             expect(mockSocket.emit).toHaveBeenCalledWith('download_url_ready', expect.objectContaining({
-                downloadUrl: 'https://download.example.com/file.mp3',
-                trackId: 'track-123'
+                downloadUrl: expect.stringContaining('/download?url='),
+                trackId: 'track-123',
+                timestamp: expect.any(String)
             }));
+            // Verify the proxy URL contains the encoded direct URL
+            const emitCall = mockSocket.emit.mock.calls.find(call => call[0] === 'download_url_ready');
+            expect(emitCall[1].downloadUrl).toContain(encodeURIComponent(directUrl));
         });
 
         it('should handle missing fileUrl', async () => {
@@ -343,6 +349,46 @@ describe('SocketHandlers', () => {
                 code: 'INVALID_API_KEY'
             }));
         });
+
+        it('should handle 429 rate limit errors', () => {
+            const error = new Error('Too many requests');
+            error.status = 429;
+            error.retryAfter = 60;
+
+            socketHandlers.handleError(mockSocket, error, 'generate_music');
+
+            expect(mockSocket.emit).toHaveBeenCalledWith('api_error', expect.objectContaining({
+                code: 'RATE_LIMIT_EXCEEDED',
+                message: expect.stringContaining('60 секунд')
+            }));
+        });
+
+        it('should handle download errors with trackId', () => {
+            const error = new Error('Download failed');
+            error.code = 'DOWNLOAD_ERROR';
+            error.trackId = 'track-123';
+
+            socketHandlers.handleError(mockSocket, error, 'get_download_url');
+
+            expect(mockSocket.emit).toHaveBeenCalledWith('api_error', expect.objectContaining({
+                code: 'DOWNLOAD_ERROR'
+            }));
+            expect(mockSocket.emit).toHaveBeenCalledWith('download_error', expect.objectContaining({
+                code: 'DOWNLOAD_ERROR',
+                trackId: 'track-123'
+            }));
+        });
+
+        it('should handle unknown errors with default message', () => {
+            const error = new Error('Unknown error');
+
+            socketHandlers.handleError(mockSocket, error, 'generate_music');
+
+            expect(mockSocket.emit).toHaveBeenCalledWith('api_error', expect.objectContaining({
+                code: 'UNKNOWN_ERROR',
+                message: expect.any(String)
+            }));
+        });
     });
 
     describe('handleApiRequest', () => {
@@ -396,6 +442,7 @@ describe('SocketHandlers', () => {
         });
     });
 });
+
 
 
 

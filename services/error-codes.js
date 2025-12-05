@@ -13,7 +13,7 @@ const ERROR_CODES = {
     502: 'Ошибка шлюза',
     503: 'Сервис временно недоступен',
     504: 'Таймаут шлюза',
-    
+
     // Кастомные коды ошибок Suno API
     INVALID_API_KEY: 'Неверный API ключ',
     INSUFFICIENT_CREDITS: 'Недостаточно кредитов',
@@ -28,9 +28,12 @@ const ERROR_CODES = {
 
 // Фатальные ошибки, при которых нужно остановить опрос
 const FATAL_ERRORS = [
-    'FAILED', 
-    'SENSITIVE_WORD_ERROR', 
+    'FAILED',
+    'ERROR',
+    'SENSITIVE_WORD_ERROR',
     'CALLBACK_EXCEPTION',
+    'CREATE_TASK_FAILED',
+    'GENERATE_AUDIO_FAILED',
     'INVALID_API_KEY',
     'INSUFFICIENT_CREDITS',
     'RATE_LIMIT_EXCEEDED',

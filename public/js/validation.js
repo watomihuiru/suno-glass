@@ -120,13 +120,13 @@ const ValidationUtils = {
         const modelPrefix = mode === 'generate' ? '' : mode;
         
         return {
-            modelVal: formData.get(`${modelPrefix}Model`),
-            promptVal: formData.get(`${mode}Prompt`)?.value?.trim() || '',
-            titleVal: formData.get(`${mode}Title`)?.value?.trim() || '',
-            styleVal: formData.get(`${mode}Style`)?.value?.trim() || '',
+            modelVal: formData.get(`${modelPrefix}Model`) || '',
+            promptVal: (formData.get(`${mode}Prompt`) || '').trim(),
+            titleVal: (formData.get(`${mode}Title`) || '').trim(),
+            styleVal: (formData.get(`${mode}Style`) || '').trim(),
             isCustom: formData.get(`${mode}CustomMode`) === 'true',
             isInstrumental: formData.get(`${mode}Instrumental`) === 'true',
-            continueAtRaw: formData.get('continueAt')?.value?.trim() || ''
+            continueAtRaw: (formData.get('continueAt') || '').trim()
         };
     },
 

@@ -36,24 +36,73 @@ socket.on('api_error', (payload) => {
 
 socket.on('api_log', logApi);
 
+// Первый трек готов, второй ещё генерируется
+socket.on('first_track_complete', (data) => {
+    logApi({
+        type: 'info',
+        msg: `Первый трек готов, ожидаем второй... (Task: ${data.taskId})`,
+        timestamp: data.timestamp || new Date().toISOString()
+    });
+});
+
+// Обработка ошибок генерации (SENSITIVE_WORD_ERROR, CREATE_TASK_FAILED, etc.)
+socket.on('task_error', (data) => {
+    const { taskId, error, code, errorMessage, errorCode, status } = data;
+
+    // Формируем сообщение об ошибке
+    const displayError = error || errorMessage || `Ошибка генерации (${code || status})`;
+
+    // Показываем уведомление пользователю
+    if (window.showNotification) {
+        window.showNotification(displayError, 'error');
+    }
+
+    // Логируем ошибку
+    logApi({
+        type: 'error',
+        msg: displayError,
+        code: code || status,
+        errorCode: errorCode,
+        taskId: taskId,
+        timestamp: data.timestamp || new Date().toISOString()
+    });
+
+    // Удаляем фейковые карточки для этой задачи
+    const hasTrack = library.some(t => t.taskId === taskId);
+    if (hasTrack) {
+        // Очищаем таймеры прогресса
+        library.filter(t => t.taskId === taskId).forEach(track => {
+            if (progressTimers[track.id]) {
+                clearInterval(progressTimers[track.id]);
+                delete progressTimers[track.id];
+            }
+        });
+
+        // Удаляем треки из библиотеки
+        library = library.filter(t => t.taskId !== taskId);
+        saveLibrary();
+        renderLibrary();
+    }
+});
+
 socket.on('task_update', (data) => {
     const { taskId, status, tracks, errorMessage } = data;
 
     // 1. ПРОВЕРКА НА ОШИБКУ
-    const isError = status.includes('FAILED') || 
-                    status === 'SENSITIVE_WORD_ERROR' || 
-                    status === 'CALLBACK_EXCEPTION';
+    const isError = status.includes('FAILED') ||
+        status === 'SENSITIVE_WORD_ERROR' ||
+        status === 'CALLBACK_EXCEPTION';
 
     if (isError) {
         // ОСТАНОВКА ПРОЦЕССА
-        
+
         // Находим карточки с этим taskId
         const hasTrack = library.some(t => t.taskId === taskId);
-        
+
         if (hasTrack) {
             // Удаляем их из библиотеки (визуально карточка исчезнет)
             library = library.filter(t => t.taskId !== taskId);
-            
+
             // Чистим все таймеры
             for (let id in progressTimers) {
                 // Если таймер не принадлежит ни одному живому треку - удаляем
@@ -62,29 +111,36 @@ socket.on('task_update', (data) => {
                     delete progressTimers[id];
                 }
             }
-            
+
             saveLibrary();
             renderLibrary();
         }
-        
+
         // Никаких alert(). Вся информация об ошибке уже есть во вкладке Logs (событие api_log)
         return;
     }
 
-    // 2. ОБРАБОТКА УСПЕХА
+    // 2. ОБРАБОТКА УСПЕХА (SUCCESS или FIRST_SUCCESS)
+    const isFirstSuccess = status === 'FIRST_SUCCESS';
+    const isFullSuccess = status === 'SUCCESS';
+
     if (tracks && tracks.length > 0) {
         let needsRender = false;
-        
+
         tracks.forEach((serverTrack) => {
+            // Определяем готов ли этот конкретный трек (есть audioUrl)
+            const isTrackComplete = !!(serverTrack.audioUrl && serverTrack.audioUrl.length > 0);
+
             let existingIndex = library.findIndex(t => t.id === serverTrack.id);
-            
+
             if (existingIndex === -1) {
                 existingIndex = library.findIndex(t => t.taskId === taskId && t.id.startsWith('temp_'));
                 if (existingIndex !== -1) {
                     const tempId = library[existingIndex].id;
-                    if (progressTimers[tempId]) { 
-                        clearInterval(progressTimers[tempId]); 
-                        delete progressTimers[tempId]; 
+                    // Только очищаем таймер если трек готов
+                    if (isTrackComplete && progressTimers[tempId]) {
+                        clearInterval(progressTimers[tempId]);
+                        delete progressTimers[tempId];
                     }
                 }
             }
@@ -93,6 +149,11 @@ socket.on('task_update', (data) => {
             if (!modelToSave && existingIndex !== -1) modelToSave = library[existingIndex].model_name;
 
             const currentProgress = library[existingIndex]?.progress || 0;
+
+            // Статус трека зависит от наличия audioUrl
+            const trackStatus = isTrackComplete ? 'complete' : 'generating';
+            const trackProgress = isTrackComplete ? 100 : currentProgress;
+
             const trackObj = {
                 id: serverTrack.id,
                 taskId: taskId,
@@ -101,22 +162,27 @@ socket.on('task_update', (data) => {
                 imageUrl: serverTrack.imageUrl || 'https://placehold.co/100/18181b/ffffff?text=Loading',
                 audioUrl: serverTrack.audioUrl || '',
                 duration: serverTrack.duration || 0,
-                status: (status === 'SUCCESS') ? 'complete' : 'generating',
+                status: trackStatus,
                 model_name: modelToSave || 'AI',
                 lyrics: serverTrack.prompt || "",
-                progress: (status === 'SUCCESS') ? 100 : currentProgress
+                progress: trackProgress
             };
 
             if (existingIndex !== -1) {
                 library[existingIndex] = { ...library[existingIndex], ...trackObj };
-                // Continue progress simulation if track is still generating and progress < 100
-                if (status !== 'SUCCESS' && currentProgress < 100) {
+                // Если трек готов - очищаем таймер прогресса
+                if (isTrackComplete && progressTimers[serverTrack.id]) {
+                    clearInterval(progressTimers[serverTrack.id]);
+                    delete progressTimers[serverTrack.id];
+                }
+                // Продолжаем симуляцию прогресса если трек еще генерируется
+                if (!isTrackComplete && currentProgress < 100) {
                     simulateProgress(serverTrack.id);
                 }
             } else {
                 library.unshift(trackObj);
-                // Start progress simulation for new tracks that aren't complete
-                if (status !== 'SUCCESS') {
+                // Запускаем симуляцию прогресса для незавершенных треков
+                if (!isTrackComplete) {
                     simulateProgress(serverTrack.id);
                 }
             }
@@ -134,7 +200,7 @@ socket.on('task_update', (data) => {
 socket.on('download_url_ready', (data) => {
     const { downloadUrl, trackId } = data;
     const track = library.find(t => t.id === trackId);
-    
+
     if (!track) return;
 
     // Create direct download link
@@ -168,7 +234,7 @@ socket.on('download_url_ready', (data) => {
 socket.on('download_error', (data) => {
     const { error, trackId } = data;
     const track = library.find(t => t.id === trackId);
-    
+
     // Reset menu state
     const menu = document.getElementById(`menu-${trackId}`);
     if (menu) {
@@ -190,9 +256,9 @@ socket.on('download_error', (data) => {
 function removePendingTracks() {
     if (pendingTempTracks.length > 0) {
         pendingTempTracks.forEach(tempId => {
-            if (progressTimers[tempId]) { 
-                clearInterval(progressTimers[tempId]); 
-                delete progressTimers[tempId]; 
+            if (progressTimers[tempId]) {
+                clearInterval(progressTimers[tempId]);
+                delete progressTimers[tempId];
             }
         });
         library = library.filter(track => !pendingTempTracks.includes(track.id));
@@ -206,28 +272,28 @@ function createFakeGeneration(model, title, tags, lyrics) {
     const now = new Date().toISOString();
     const id1 = 'temp_' + Date.now() + '_1';
     const id2 = 'temp_' + Date.now() + '_2';
-    
+
     const newTracks = [
         { id: id1, title, tags, imageUrl: 'https://placehold.co/100/18181b/ffffff?text=Generating', audioUrl: '', model_name: model, status: 'generating', progress: 0, createdAt: now, lyrics: lyrics || "Processing..." },
         { id: id2, title, tags, imageUrl: 'https://placehold.co/100/18181b/ffffff?text=Generating', audioUrl: '', model_name: model, status: 'generating', progress: 0, createdAt: now, lyrics: lyrics || "Processing..." }
     ];
-    
+
     library = [...newTracks, ...library];
     renderLibrary();
     simulateProgress(id1);
     simulateProgress(id2);
-    
+
     return [id1, id2];
 }
 
 function simulateProgress(trackId) {
     const trackIndex = library.findIndex(t => t.id === trackId);
     if (trackIndex === -1) return;
-    
+
     let progress = library[trackIndex].progress || 0;
     if (progressTimers[trackId]) clearInterval(progressTimers[trackId]);
     progressTimers[trackId] = setInterval(() => {
-        progress += 0.8;
+        progress += 0.65;
         const trackIndex = library.findIndex(t => t.id === trackId);
         if (trackIndex !== -1) {
             library[trackIndex].progress = progress;

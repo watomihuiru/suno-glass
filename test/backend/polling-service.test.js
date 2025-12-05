@@ -353,6 +353,108 @@ describe('PollingService', () => {
                 status: 'PROCESSING'
             }));
         });
+
+        it('should continue polling for PENDING status', () => {
+            const data = {
+                code: 200,
+                data: {
+                    status: 'PENDING',
+                    response: { sunoData: [] }
+                }
+            };
+
+            const shouldContinue = pollingService.handlePollingResponse(data, mockSocket, 'task-123');
+
+            expect(shouldContinue).toBe(true);
+            expect(mockSocket.emit).toHaveBeenCalledWith('task_update', expect.objectContaining({
+                status: 'PENDING'
+            }));
+        });
+
+        it('should continue polling for QUEUED status', () => {
+            const data = {
+                code: 200,
+                data: {
+                    status: 'QUEUED',
+                    response: { sunoData: [] }
+                }
+            };
+
+            const shouldContinue = pollingService.handlePollingResponse(data, mockSocket, 'task-123');
+
+            expect(shouldContinue).toBe(true);
+            expect(mockSocket.emit).toHaveBeenCalledWith('task_update', expect.objectContaining({
+                status: 'QUEUED'
+            }));
+        });
+
+        it('should handle ERROR status as failure', () => {
+            const data = {
+                code: 200,
+                data: {
+                    status: 'ERROR',
+                    errorMessage: 'Task error',
+                    errorCode: 'TASK_ERROR'
+                }
+            };
+
+            const shouldContinue = pollingService.handlePollingResponse(data, mockSocket, 'task-123');
+
+            expect(shouldContinue).toBe(false);
+            expect(mockSocket.emit).toHaveBeenCalledWith('task_failed', expect.objectContaining({
+                status: 'ERROR',
+                error: 'Task error'
+            }));
+        });
+
+        it('should handle unknown statuses by continuing polling', () => {
+            const data = {
+                code: 200,
+                data: {
+                    status: 'UNKNOWN_STATUS',
+                    response: { sunoData: [] }
+                }
+            };
+
+            const shouldContinue = pollingService.handlePollingResponse(data, mockSocket, 'task-123');
+
+            expect(shouldContinue).toBe(true);
+            expect(mockSocket.emit).toHaveBeenCalledWith('task_update', expect.objectContaining({
+                status: 'UNKNOWN_STATUS'
+            }));
+        });
+
+        it('should include tracks in update when available', () => {
+            const data = {
+                code: 200,
+                data: {
+                    status: 'SUCCESS',
+                    response: {
+                        sunoData: [
+                            { id: 'track-1', title: 'Track 1' },
+                            { id: 'track-2', title: 'Track 2' }
+                        ]
+                    }
+                }
+            };
+
+            const shouldContinue = pollingService.handlePollingResponse(data, mockSocket, 'task-123');
+
+            expect(shouldContinue).toBe(false);
+            const updateCall = mockSocket.emit.mock.calls.find(call => call[0] === 'task_update');
+            expect(updateCall[1].tracks).toHaveLength(2);
+            expect(updateCall[1].tracks[0].id).toBe('track-1');
+        });
+    });
+
+    describe('isFatalError', () => {
+        it('should identify fatal errors correctly', () => {
+            expect(pollingService.isFatalError('SENSITIVE_WORD_ERROR')).toBe(true);
+            expect(pollingService.isFatalError('CALLBACK_EXCEPTION')).toBe(true);
+            expect(pollingService.isFatalError('PROCESSING')).toBe(false);
+            expect(pollingService.isFatalError(null)).toBe(false);
+            expect(pollingService.isFatalError(undefined)).toBe(false);
+        });
     });
 });
 
